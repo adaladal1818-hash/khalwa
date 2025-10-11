@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الخلوة — رحلة جميلة مع كتابي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <div class="header"><div class="title">✨ رحلة جميلة مع كتابي ✨</div></div>
+
+  <div id="home" class="card">
+    <p class="small center">افتح الخلوة الآن — اختر فئتك:</p>
+    <button class="btn btn-red" onclick="showPanel('admin')">🔴 المسؤول</button>
+    <button class="btn btn-blue" onclick="showPanel('teacher')">🔵 الخادم</button>
+    <button class="btn btn-green" onclick="showPanel('child')">🟢 الطفل</button>
+    <div class="small center" style="margin-top:10px">صفوف: 1 - 2 - 3 - 4 - 5 - 6</div>
+  </div>
+
+  <div id="mainInfo" class="card" style="display:none"><div id="todayTitle" class="title"></div><div id="kholwaTimer" class="timer"></div></div>
+
+  <div id="admin" class="card" style="display:none">
+    <h3 class="center">المسؤول</h3>
+    <div id="adminLoginBox">
+      <label>كلمة مرور المسؤول:</label>
+      <input id="adminPass" class="input" type="password" placeholder="ادخل كلمة المرور">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-red" id="adminLoginBtn" onclick="adminLogin()">دخول</button>
+        <button class="btn" id="adminQuick" style="background:#eee" onclick="goHome()">عودة</button>
+      </div>
+    </div>
+
+    <div id="adminPanel" style="display:none">
+      <label>عنوان الخلوة:</label><input id="dayTitle" class="input" placeholder="عنوان اليوم">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label>بداية:</label><input id="startTime" class="input" type="datetime-local">
+        </div>
+        <div style="flex:1">
+          <label>نهاية:</label><input id="endTime" class="input" type="datetime-local">
+        </div>
+      </div>
+      <label>نص الخلوة (اختياري):</label><textarea id="kholwaText" class="input" rows="3"></textarea>
+      <hr>
+      <h4>سؤال اليوم (اختيار من متعدد)</h4>
+      <label>نص السؤال:</label><input id="qText" class="input" placeholder="اكتب السؤال">
+      <label>الخيار 1:</label><input id="q1" class="input" placeholder="الخيار الأول">
+      <label>الخيار 2:</label><input id="q2" class="input" placeholder="الخيار الثاني">
+      <label>الخيار 3:</label><input id="q3" class="input" placeholder="الخيار الثالث">
+      <label>اختر رقم الإجابة الصحيحة:</label><select id="qCorrect" class="input"><option value="0">1</option><option value="1">2</option><option value="2">3</option></select>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-red" id="publishBtn" onclick="publishKholwa()">نشر الخلوة</button>
+        <button class="btn" id="closeNowBtn" style="background:#ffa500;color:#fff" onclick="closeNow()">غلق الآن</button>
+      </div>
+
+      <hr>
+      <h4>إدارة الخدام</h4>
+      <label>اسم الخادم:</label><input id="tuser" class="input">
+      <label>كلمة المرور للخادم:</label><input id="tpass" class="input" value="servant123" type="text">
+      <label>اختر فصل للخادم:</label><select id="tclass" class="input"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+      <button class="btn btn-red" id="createTeacherBtn" onclick="createTeacher()">إنشاء خادم</button>
+
+      <hr>
+      <h4>الأيام السابقة</h4><div id="historyList" class="note"></div>
+      <h4>تقارير</h4><div id="reportArea" class="note"></div>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-blue" id="downloadKholwaBtn">تحميل الخلوة</button><button class="btn" id="resetBtn" style="background:#f04d4d;color:#fff" onclick="resetAll()">تصفير البيانات</button></div>
+      <div class="back-btn" onclick="goHome()">🔙 عوده</div>
+    </div>
+  </div>
+
+  <div id="teacher" class="card" style="display:none">
+    <h3 class="center">الخادم</h3>
+    <div id="teacherLoginBox">
+      <label>اسم المستخدم:</label><input id="loginUser" class="input">
+      <label>كلمة المرور:</label><input id="loginPass" class="input" type="password">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-blue" id="teacherLoginBtn" onclick="teacherLogin()">دخول</button>
+        <button class="btn" onclick="goHome()" style="background:#eee">عودة</button>
+      </div>
+    </div>
+    <div id="teacherPanel" style="display:none">
+      <h4>طلاب الفصل <span id="teacherClass" class="note"></span></h4>
+      <label>أضف أسماء الطلاب (افصل بفاصلة):</label><textarea id="studentNames" class="input" rows="3"></textarea>
+      <button class="btn btn-blue" id="addStudentsBtn" onclick="addStudents()">إضافة</button>
+      <div id="teacherStatus" class="note"></div>
+      <div class="back-btn" onclick="goHome()">🔙 عوده</div>
+    </div>
+  </div>
+
+  <div id="child" class="card" style="display:none">
+    <h3 class="center">الطفل</h3>
+    <div id="childEntry">
+      <label>الاسم:</label><input id="childName" class="input">
+      <label>رقم الفصل:</label><select id="childClass" class="input"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+      <button class="btn btn-green" id="enterKholwaBtn" onclick="enterKholwa()">فتح الخلوة</button>
+      <div class="small note">لو ظهر "الخلوة مغلقة" تأكد أن المسؤول رفع ملف <code>data.json</code> على الاستضافة.</div>
+    </div>
+    <div id="kholwaView" style="display:none">
+      <div id="kholwaContent" class="note"></div>
+      <div id="questionArea" class="note"></div>
+      <div id="choicesArea"></div>
+      <div id="resultArea" class="note"></div>
+      <div class="back-btn" onclick="goHome()">🔙 عوده</div>
+    </div>
+  </div>
+
+  <div class="small center">إعداد خدمة مدارس الأحد</div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>

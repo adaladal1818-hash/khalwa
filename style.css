@@ -14,3 +14,23 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
 .timer{font-weight:800;color:#b04545;margin-top:8px;text-align:center}
 .table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid #efe8d8;padding:6px;text-align:center;font-size:0.95rem}
 .fab-admin{position:fixed;top:10px;left:10px;background:#d62828;color:#fff;padding:8px;border-radius:8px;cursor:pointer;font-weight:800;z-index:999}
+
+/* نظام الصور الدائرية الجديد */
+.profile-img{width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);margin:0 auto;display:block}
+.upload-btn{background:#6a4c93;color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-size:0.9rem;margin:8px auto;display:block}
+.upload-btn:hover{background:#5a3c83}
+.hidden{display:none}
+
+/* لوحة المتصدرين */
+.leaderboard-item{display:flex;align-items:center;padding:10px;border-bottom:1px solid #efe8d8;gap:12px}
+.leaderboard-avatar{width:50px;height:50px;border-radius:50%;object-fit:cover}
+.leaderboard-rank{font-size:1.2rem;font-weight:800;min-width:30px}
+.leaderboard-info{flex:1}
+.leaderboard-name{font-weight:700;margin-bottom:4px}
+.leaderboard-points{color:#666;font-size:0.9rem}
+.medal-gold{color:gold}
+.medal-silver{color:silver}
+.medal-bronze{color:#cd7f32}
+
+/* نقاط الطفل */
+.points-badge{background:#ffd700;color:#000;padding:4px 8px;border-radius:12px;font-size:0.8rem;font-weight:700;display:inline-block;margin-right:8px}

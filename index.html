@@ -72,4 +72,48 @@
         <button class="btn btn-blue" id="downloadKholwaBtn">تحميل الخلوة</button>
         <button class="btn" id="resetBtn" style="background:#f04d4d;color:#fff" onclick="resetAll()">تصفير البيانات</button>
       </div>
-      <div class="back-btn" onclick="goHome()">🔙 عوده</
+      <div class="back-btn" onclick="goHome()">🔙 عوده</div>
+    </div>
+  </div>
+
+  <div id="teacher" class="card" style="display:none">
+    <h3 class="center">الخادم</h3>
+    <div id="teacherLoginBox">
+      <label>اسم المستخدم:</label><input id="loginUser" class="input">
+      <label>كلمة المرور:</label><input id="loginPass" class="input" type="password">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-blue" id="teacherLoginBtn" onclick="teacherLogin()">دخول</button>
+        <button class="btn" onclick="goHome()" style="background:#eee">عودة</button>
+      </div>
+    </div>
+    <div id="teacherPanel" style="display:none">
+      <h4>طلاب الفصل <span id="teacherClass" class="note"></span></h4>
+      <label>أضف أسماء الطلاب (افصل بفاصلة):</label><textarea id="studentNames" class="input" rows="3"></textarea>
+      <button class="btn btn-blue" id="addStudentsBtn" onclick="addStudents()">إضافة</button>
+      <div id="teacherStatus" class="note"></div>
+      <div class="back-btn" onclick="goHome()">🔙 عوده</div>
+    </div>
+  </div>
+
+  <div id="child" class="card" style="display:none">
+    <h3 class="center">الطفل</h3>
+    <div id="childEntry">
+      <label>الاسم:</label><input id="childName" class="input">
+      <label>رقم الفصل:</label><select id="childClass" class="input"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+      <button class="btn btn-green" id="enterKholwaBtn" onclick="enterKholwa()">فتح الخلوة</button>
+      <div class="small note">لو ظهر "الخلوة مغلقة" تأكد أن المسؤول رفع ملف <code>data.json</code> على الاستضافة.</div>
+    </div>
+    <div id="kholwaView" style="display:none">
+      <div id="kholwaContent" class="note"></div>
+      <div id="questionArea" class="note"></div>
+      <div id="choicesArea"></div>
+      <div id="resultArea" class="note"></div>
+      <div class="back-btn" onclick="goHome()">🔙 عوده</div>
+    </div>
+  </div>
+
+  <div class="small center">إعداد خدمة مدارس الأحد</div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>

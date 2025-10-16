@@ -19,6 +19,13 @@
     <button class="btn btn-blue" onclick="showPanel('teacher')">🔵 الخادم</button>
     <button class="btn btn-green" onclick="showPanel('child')">🟢 الطفل</button>
     <button class="btn" style="background:#ffd700;color:#000" onclick="showLeaderboard()">🏆 لوحة المتصدرين</button>
+    
+    <!-- زر الإشعارات المضاف -->
+    <button class="btn" style="background:#e67e22;color:white;position:relative;" onclick="showNotificationsPanel()">
+      🔔 الإشعارات
+      <span id="notificationBadge" class="notification-badge" style="display:none">0</span>
+    </button>
+    
     <div class="small center" style="margin-top:10px">صفوف: 1 - 2 - 3 - 4 - 5 - 6</div>
   </div>
 
@@ -68,10 +75,17 @@
       <hr>
       <h4>الأيام السابقة</h4><div id="historyList" class="note"></div>
       <h4>تقارير</h4><div id="reportArea" class="note"></div>
+      
+      <!-- الأزرار الجديدة المضافة -->
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn btn-blue" id="downloadKholwaBtn">تحميل الخلوة</button>
-        <button class="btn" id="resetBtn" style="background:#f04d4d;color:#fff" onclick="resetAll()">تصفير البيانات</button>
+        <button class="btn btn-blue" onclick="showAnalytics()">📊 التقارير والإحصائيات</button>
+        <button class="btn" style="background:#27ae60;color:white" onclick="createManualBackup()">💾 نسخ احتياطي</button>
       </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn" style="background:#e67e22;color:white" onclick="showNotificationsPanel()">🔔 الإشعارات</button>
+        <button class="btn" id="resetBtn" style="background:#f04d4d;color:white" onclick="resetAll()">تصفير البيانات</button>
+      </div>
+      
       <div class="back-btn" onclick="goHome()">🔙 عوده</div>
     </div>
   </div>

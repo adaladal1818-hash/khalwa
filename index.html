@@ -29,7 +29,10 @@
     <div class="small center" style="margin-top:10px">صفوف: 1 - 2 - 3 - 4 - 5 - 6</div>
   </div>
 
-  <div id="mainInfo" class="card" style="display:none"><div id="todayTitle" class="title"></div><div id="kholwaTimer" class="timer"></div></div>
+  <div id="mainInfo" class="card" style="display:none">
+    <div id="todayTitle" class="title"></div>
+    <div id="kholwaTimer" class="timer"></div>
+  </div>
 
   <div id="admin" class="card" style="display:none">
     <h3 class="center">المسؤول</h3>
@@ -43,23 +46,44 @@
     </div>
 
     <div id="adminPanel" style="display:none">
-      <label>عنوان الخلوة:</label><input id="dayTitle" class="input" placeholder="عنوان اليوم">
+      <label>عنوان الخلوة:</label>
+      <input id="dayTitle" class="input" placeholder="عنوان اليوم">
+      
       <div style="display:flex;gap:8px">
         <div style="flex:1">
-          <label>بداية:</label><input id="startTime" class="input" type="datetime-local">
+          <label>بداية:</label>
+          <input id="startTime" class="input" type="datetime-local">
         </div>
         <div style="flex:1">
-          <label>نهاية:</label><input id="endTime" class="input" type="datetime-local">
+          <label>نهاية:</label>
+          <input id="endTime" class="input" type="datetime-local">
         </div>
       </div>
-      <label>نص الخلوة (اختياري):</label><textarea id="kholwaText" class="input" rows="3"></textarea>
+      
+      <label>نص الخلوة (اختياري):</label>
+      <textarea id="kholwaText" class="input" rows="3" placeholder="اكتب نص الخلوة أو الآيات..."></textarea>
+      
       <hr>
       <h4>سؤال اليوم (اختيار من متعدد)</h4>
-      <label>نص السؤال:</label><input id="qText" class="input" placeholder="اكتب السؤال">
-      <label>الخيار 1:</label><input id="q1" class="input" placeholder="الخيار الأول">
-      <label>الخيار 2:</label><input id="q2" class="input" placeholder="الخيار الثاني">
-      <label>الخيار 3:</label><input id="q3" class="input" placeholder="الخيار الثالث">
-      <label>اختر رقم الإجابة الصحيحة:</label><select id="qCorrect" class="input"><option value="0">1</option><option value="1">2</option><option value="2">3</option></select>
+      <label>نص السؤال:</label>
+      <input id="qText" class="input" placeholder="اكتب السؤال">
+      
+      <label>الخيار 1:</label>
+      <input id="q1" class="input" placeholder="الخيار الأول">
+      
+      <label>الخيار 2:</label>
+      <input id="q2" class="input" placeholder="الخيار الثاني">
+      
+      <label>الخيار 3:</label>
+      <input id="q3" class="input" placeholder="الخيار الثالث">
+      
+      <label>اختر رقم الإجابة الصحيحة:</label>
+      <select id="qCorrect" class="input">
+        <option value="0">1</option>
+        <option value="1">2</option>
+        <option value="2">3</option>
+      </select>
+      
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-red" id="publishBtn" onclick="publishKholwa()">نشر الخلوة</button>
         <button class="btn" id="closeNowBtn" style="background:#ffa500;color:#fff" onclick="closeNow()">غلق الآن</button>
@@ -67,20 +91,37 @@
 
       <hr>
       <h4>إدارة الخدام</h4>
-      <label>اسم الخادم:</label><input id="tuser" class="input">
-      <label>كلمة المرور للخادم:</label><input id="tpass" class="input" value="servant123" type="text">
-      <label>اختر فصل للخادم:</label><select id="tclass" class="input"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+      <label>اسم الخادم:</label>
+      <input id="tuser" class="input" placeholder="اسم الخادم">
+      
+      <label>كلمة المرور للخادم:</label>
+      <input id="tpass" class="input" value="servant123" type="text" placeholder="كلمة المرور">
+      
+      <label>اختر فصل للخادم:</label>
+      <select id="tclass" class="input">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+      
       <button class="btn btn-red" id="createTeacherBtn" onclick="createTeacher()">إنشاء خادم</button>
 
       <hr>
-      <h4>الأيام السابقة</h4><div id="historyList" class="note"></div>
-      <h4>تقارير</h4><div id="reportArea" class="note"></div>
+      <h4>الأيام السابقة</h4>
+      <div id="historyList" class="note"></div>
+      
+      <h4>تقارير</h4>
+      <div id="reportArea" class="note"></div>
       
       <!-- الأزرار الجديدة المضافة -->
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-blue" onclick="showAnalytics()">📊 التقارير والإحصائيات</button>
         <button class="btn" style="background:#27ae60;color:white" onclick="createManualBackup()">💾 نسخ احتياطي</button>
       </div>
+      
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn" style="background:#e67e22;color:white" onclick="showNotificationsPanel()">🔔 الإشعارات</button>
         <button class="btn" id="resetBtn" style="background:#f04d4d;color:white" onclick="resetAll()">تصفير البيانات</button>
@@ -93,17 +134,28 @@
   <div id="teacher" class="card" style="display:none">
     <h3 class="center">الخادم</h3>
     <div id="teacherLoginBox">
-      <label>اسم المستخدم:</label><input id="loginUser" class="input">
-      <label>كلمة المرور:</label><input id="loginPass" class="input" type="password">
-      <div style="display:flex;gap:8px">
+      <label>اسم المستخدم:</label>
+      <input id="loginUser" class="input" placeholder="ادخل اسم المستخدم">
+      
+      <label>كلمة المرور:</label>
+      <input id="loginPass" class="input" type="password" placeholder="ادخل كلمة المرور">
+      
+      <div style="display:flex;gap:8px;margin-top:10px">
         <button class="btn btn-blue" id="teacherLoginBtn" onclick="teacherLogin()">دخول</button>
         <button class="btn" onclick="goHome()" style="background:#eee">عودة</button>
       </div>
     </div>
+    
     <div id="teacherPanel" style="display:none">
       <h4>طلاب الفصل <span id="teacherClass" class="note"></span></h4>
-      <label>أضف أسماء الطلاب (افصل بفاصلة):</label><textarea id="studentNames" class="input" rows="3"></textarea>
-      <button class="btn btn-blue" id="addStudentsBtn" onclick="addStudents()">إضافة</button>
+      
+      <label>أضف أسماء الطلاب (افصل بفاصلة):</label>
+      <textarea id="studentNames" class="input" rows="3" placeholder="مثال: أحمد, محمد, فاطمة"></textarea>
+      <button class="btn btn-blue" id="addStudentsBtn" onclick="addStudents()">إضافة الطلاب</button>
+      
+      <!-- لوحة تحكم الخادم المحسنة -->
+      <div id="teacherDashboard"></div>
+      
       <div id="teacherStatus" class="note"></div>
       <div class="back-btn" onclick="goHome()">🔙 عوده</div>
     </div>
@@ -112,11 +164,26 @@
   <div id="child" class="card" style="display:none">
     <h3 class="center">الطفل</h3>
     <div id="childEntry">
-      <label>الاسم:</label><input id="childName" class="input">
-      <label>رقم الفصل:</label><select id="childClass" class="input"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+      <label>الاسم:</label>
+      <input id="childName" class="input" placeholder="ادخل اسمك">
+      
+      <label>رقم الفصل:</label>
+      <select id="childClass" class="input">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+      </select>
+      
       <button class="btn btn-green" id="enterKholwaBtn" onclick="enterKholwa()">فتح الخلوة</button>
-      <div class="small note">لو ظهر "الخلوة مغلقة" تأكد أن المسؤول رفع ملف <code>data.json</code> على الاستضافة.</div>
+      
+      <div class="small note">
+        لو ظهر "الخلوة مغلقة" تأكد أن المسؤول رفع ملف <code>data.json</code> على الاستضافة.
+      </div>
     </div>
+    
     <div id="kholwaView" style="display:none">
       <div id="kholwaContent" class="note"></div>
       <div id="questionArea" class="note"></div>

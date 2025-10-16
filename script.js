@@ -39,6 +39,176 @@ async function updateMainInfo(){
     updateTimerDisplay(kh); 
 }
 
+/* ============================================
+   نظام الوسائط المتعددة للخلوة
+   ============================================ */
+
+let currentMediaType = 'text';
+
+function setMediaType(type) {
+    currentMediaType = type;
+    
+    // إخفاء جميع الحقول
+    document.getElementById('textInput').style.display = 'none';
+    document.getElementById('cameraInput').style.display = 'none';
+    document.getElementById('fileInput').style.display = 'none';
+    document.getElementById('pasteInput').style.display = 'none';
+    
+    // إزالة النشط من جميع الأزرار
+    document.querySelectorAll('.media-type-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // إضافة النشط للزر المحدد
+    event.target.classList.add('active');
+    
+    // إظهار الحقل المحدد
+    switch(type) {
+        case 'text':
+            document.getElementById('textInput').style.display = 'block';
+            break;
+        case 'paste':
+            document.getElementById('pasteInput').style.display = 'block';
+            break;
+        case 'camera':
+            document.getElementById('cameraInput').style.display = 'block';
+            initCamera();
+            break;
+        case 'image':
+        case 'pdf':
+        case 'word':
+            document.getElementById('fileInput').style.display = 'block';
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">${type === 'image' ? '🖼️' : type === 'pdf' ? '📄' : '📋'}</div>
+                    <strong>انقر لرفع ${type === 'image' ? 'صورة' : type === 'pdf' ? 'ملف PDF' : 'ملف Word'}</strong>
+                    <p class="note">${type === 'image' ? 'الصور المدعومة: JPG, PNG, GIF' : type === 'pdf' ? 'رفع ملف PDF' : 'رفع ملف Word'}</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept="${
+                    type === 'image' ? 'image/*' : 
+                    type === 'pdf' ? '.pdf' : 
+                    '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                }" onchange="handleFileUpload(event)">
+            `;
+            break;
+    }
+}
+
+// تهيئة الكاميرا
+function initCamera() {
+    const cameraPreview = document.getElementById('cameraPreview');
+    const captureBtn = document.getElementById('captureBtn');
+    
+    cameraPreview.innerHTML = '<div class="media-status info">جاري تشغيل الكاميرا...</div>';
+    
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+            cameraPreview.innerHTML = '<video id="cameraVideo" autoplay playsinline class="camera-preview"></video>';
+            const video = document.getElementById('cameraVideo');
+            video.srcObject = stream;
+            captureBtn.style.display = 'block';
+        })
+        .catch(err => {
+            console.error('خطأ في الكاميرا:', err);
+            cameraPreview.innerHTML = '<div class="media-status error">❌ لا يمكن الوصول للكاميرا. تأكد من الصلاحيات.</div>';
+        });
+}
+
+// التقاط صورة من الكاميرا
+function captureImage() {
+    const video = document.getElementById('cameraVideo');
+    if (!video) return;
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    
+    canvas.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('kholwaText').value = `![صورة من الكاميرا](${e.target.result})`;
+            document.getElementById('cameraPreview').innerHTML = `
+                <div class="media-status success">✅ تم التقاط الصورة بنجاح!</div>
+                <img src="${e.target.result}" class="media-preview" alt="الصورة الملتقطة">
+            `;
+            
+            // إيقاف الكاميرا
+            const stream = video.srcObject;
+            stream.getTracks().forEach(track => track.stop());
+        };
+        reader.readAsDataURL(blob);
+    }, 'image/jpeg', 0.8);
+}
+
+// معالجة الرفع
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        if (currentMediaType === 'image') {
+            document.getElementById('kholwaText').value = `![${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع الصورة بنجاح!</div>
+                <img src="${e.target.result}" class="media-preview" alt="${file.name}">
+            `;
+        } else if (currentMediaType === 'pdf') {
+            document.getElementById('kholwaText').value = `[📎 ${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع ملف PDF بنجاح!</div>
+                <div class="file-info">
+                    <div class="file-icon">📄</div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                </div>
+            `;
+        } else if (currentMediaType === 'word') {
+            document.getElementById('kholwaText').value = `[📋 ${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع ملف Word بنجاح!</div>
+                <div class="file-info">
+                    <div class="file-icon">📋</div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                </div>
+            `;
+        }
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// معالجة النسخ واللصق
+function handlePaste(event) {
+    const pastedText = event.clipboardData.getData('text');
+    document.getElementById('pasteContent').value = pastedText;
+    document.getElementById('kholwaText').value = pastedText;
+    document.getElementById('pasteInput').innerHTML += `
+        <div class="media-status success">✅ تم لصق النص بنجاح!</div>
+    `;
+}
+
+function getMediaTypeName(type) {
+    const names = {
+        'text': 'نص',
+        'paste': 'نص منسوخ',
+        'camera': 'صورة كاميرا',
+        'image': 'صورة',
+        'pdf': 'PDF',
+        'word': 'Word'
+    };
+    return names[type] || type;
+}
+
 /* نظام النقاط */
 function calculatePoints(cls, name, isCorrect = false, activityType = 'normal') {
     const pointsKey = `${cls}_${name}`;
@@ -265,6 +435,9 @@ function adminLogin(){
     refreshHistoryList(); 
     loadReport(); 
     
+    // تفعيل النص كافتراضي
+    setMediaType('text');
+    
     const sharedPromise = fetchShared(); 
     sharedPromise.then(shared=>{ 
         const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa'); 
@@ -284,6 +457,7 @@ function adminLogin(){
     }); 
 }
 
+// نشر الخلوة المحدثة
 function publishKholwa(){ 
     const title = document.getElementById('dayTitle').value.trim(); 
     const start = document.getElementById('startTime').value; 
@@ -303,7 +477,7 @@ function publishKholwa(){
         title: title||'خلوة اليوم', 
         startISO: new Date(start).toISOString(), 
         endISO: new Date(end).toISOString(), 
-        type:'text', 
+        type: currentMediaType,
         content: text, 
         question:{text:qText, options:[q1,q2,q3], correctIndex:qCorrect} 
     }; 
@@ -333,7 +507,7 @@ function publishKholwa(){
     URL.revokeObjectURL(url); 
     
     alert('تم نشر الخلوة ✅ حمل ملف data.json وارفعه على الاستضافة (نفس المجلد)'); 
-    addNotification('نشر خلوة', 'تم نشر خلوة جديدة', 'success');
+    addNotification('نشر خلوة', `تم نشر خلوة جديدة بنوع ${getMediaTypeName(currentMediaType)}`, 'success');
 }
 
 function closeNow(){ 
@@ -465,9 +639,23 @@ async function showKholwaFor(name,cls){
         </div>
     `;
     
-    if(kh.type==='text' || kh.type==='copied') content.innerHTML += '<div class="note">'+(kh.content||'')+'</div>'; 
-    else if(kh.type==='image') content.innerHTML += '<img src="'+kh.content+'" style="max-width:100%;border-radius:8px">'; 
-    else if(kh.type==='pdf' || kh.type==='word') content.innerHTML += '<a class="note link" href="'+kh.content+'" target="_blank">فتح الملف (PDF/Word)</a>'; 
+    if(kh.type==='text' || kh.type==='paste') {
+        content.innerHTML += '<div class="note">'+(kh.content||'')+'</div>'; 
+    } else if(kh.type==='image' || kh.type==='camera') {
+        // استخراج رابط الصورة من المحتوى
+        const imageMatch = kh.content.match(/!\[.*?\]\((.*?)\)/);
+        if (imageMatch && imageMatch[1]) {
+            content.innerHTML += `<img src="${imageMatch[1]}" style="max-width:100%;border-radius:8px">`;
+        }
+    } else if(kh.type==='pdf' || kh.type==='word') {
+        // استخراج رابط الملف من المحتوى
+        const fileMatch = kh.content.match(/\[.*?\]\((.*?)\)/);
+        if (fileMatch && fileMatch[1]) {
+            content.innerHTML += `<a class="note link" href="${fileMatch[1]}" target="_blank" style="display:block; text-align:center; padding:15px; background:#f8f9fa; border-radius:8px; margin:10px 0;">
+                ${kh.type==='pdf' ? '📄 فتح ملف PDF' : '📋 فتح ملف Word'}
+            </a>`;
+        }
+    }
     
     qArea.innerHTML=''; 
     choicesArea.innerHTML=''; 
@@ -965,4 +1153,4 @@ function resetAll() {
 // تحديث الإشعارات عند التحميل
 document.addEventListener('DOMContentLoaded', function() {
     updateNotifications();
-}
+});

@@ -966,3 +966,53 @@ function resetAll() {
 document.addEventListener('DOMContentLoaded', function() {
     updateNotifications();
 });
+/* تنسيقات الوسائط المتعددة */
+.media-preview {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 10px 0;
+    border: 2px solid #e0e0e0;
+}
+
+.camera-container {
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.capture-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.file-upload-area {
+    border: 2px dashed #3498db;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.file-upload-area:hover {
+    background: #e3f2fd;
+    border-color: #2980b9;
+}
+
+.media-type-btn.active {
+    transform: scale(0.95);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}

@@ -1,710 +1,546 @@
-const SHARED = 'data.json';
-async function fetchShared(){ try{ const r = await fetch(SHARED + '?_=' + Date.now()); if(!r.ok) throw 0; return await r.json(); }catch(e){ return null; } }
+/* ============================================
+   ميزات الخدام الجديدة - المرحلة الثالثة
+   ============================================ */
 
-const LS = { get(k){ try{return JSON.parse(localStorage.getItem(k)); }catch(e){return null} }, set(k,v){ localStorage.setItem(k, JSON.stringify(v)); } };
-if(!LS.get('teachers')) LS.set('teachers', []);
-if(!LS.get('students')) LS.set('students', { '1':[], '2':[], '3':[], '4':[], '5':[], '6':[] });
-if(!LS.get('history')) LS.set('history', []);
-if(!LS.get('studentPhotos')) LS.set('studentPhotos', {});
-if(!LS.get('studentPoints')) LS.set('studentPoints', {});
-if(!LS.get('notifications')) LS.set('notifications', []);
-if(!LS.get('autoBackup')) LS.set('autoBackup', true);
-if(!LS.get('activities')) LS.set('activities', []);
-
-function todayDate(){ return new Date().toISOString().slice(0,10); }
-function showPanel(id){ document.getElementById('home').style.display='none'; ['admin','teacher','child'].forEach(p=>document.getElementById(p).style.display=(p===id)?'block':'none'); updateMainInfo(); updateNotifications(); }
-function goHome(){ document.getElementById('home').style.display='block'; ['admin','teacher','child'].forEach(p=>document.getElementById(p).style.display='none'); document.getElementById('mainInfo').style.display='none'; }
-
-async function updateMainInfo(){ const shared = await fetchShared(); const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa'); if(!kh || kh.date !== todayDate()){ document.getElementById('mainInfo').style.display='none'; return; } document.getElementById('mainInfo').style.display='block'; document.getElementById('todayTitle').innerText = kh.title || 'خلوة اليوم'; updateTimerDisplay(kh); }
-
-/* نظام النقاط */
-function calculatePoints(cls, name, isCorrect = false, activityType = 'normal') {
-    const pointsKey = `${cls}_${name}`;
-    const studentPoints = LS.get('studentPoints') || {};
-    const currentPoints = studentPoints[pointsKey] || 0;
-    
-    let newPoints = currentPoints;
-    let pointsEarned = 0;
-    
-    // نقاط الحضور اليومي (10 نقاط) - مرة واحدة يومياً
-    const lastAttendance = studentPoints.lastAttendance || {};
-    if (!lastAttendance[cls] || lastAttendance[cls] !== todayDate()) {
-        newPoints += 10;
-        pointsEarned += 10;
-        lastAttendance[cls] = todayDate();
-        studentPoints.lastAttendance = lastAttendance;
-    }
-    
-    // نقاط حسب نوع النشاط
-    if (activityType === 'trueFalse' && isCorrect) {
-        newPoints += 15;
-        pointsEarned += 15;
-    } else if (activityType === 'sorting' && isCorrect) {
-        newPoints += 25;
-        pointsEarned += 25;
-    } else if (activityType === 'matching' && isCorrect) {
-        newPoints += 20;
-        pointsEarned += 20;
-    } else if (activityType === 'challenge' && isCorrect) {
-        newPoints += 30;
-        pointsEarned += 30;
-    } else if (isCorrect) {
-        newPoints += 20;
-        pointsEarned += 20;
-    }
-    
-    // مكافأة المتابعة (15 نقطة لكل 3 أيام متتالية)
-    const streak = calculateStreak(cls, name);
-    if (streak >= 3) {
-        newPoints += 15;
-        pointsEarned += 15;
-    }
-    
-    studentPoints[pointsKey] = newPoints;
-    LS.set('studentPoints', studentPoints);
-    
-    return { total: newPoints, earned: pointsEarned };
-}
-
-function calculateStreak(cls, name) {
-    const students = LS.get('students') || {};
-    const student = students[cls]?.find(s => s.name === name);
-    return student?.answeredDates?.length || 0;
-}
-
-function getStudentPoints(cls, name) {
-    const pointsKey = `${cls}_${name}`;
-    const studentPoints = LS.get('studentPoints') || {};
-    return studentPoints[pointsKey] || 0;
-}
-
-/* نظام الصور */
-function handleImageUpload(event, cls, name) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // التحقق من حجم الصورة (2MB كحد أقصى)
-    if (file.size > 2 * 1024 * 1024) {
-        alert('حجم الصورة كبير جداً. الرجاء اختيار صورة أصغر من 2MB');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const studentPhotos = LS.get('studentPhotos') || {};
-        studentPhotos[`${cls}_${name}`] = e.target.result;
-        LS.set('studentPhotos', studentPhotos);
-        
-        const imgElement = document.getElementById('childProfileImg');
-        if (imgElement) {
-            imgElement.src = e.target.result;
-        }
-        
-        alert('تم حفظ الصورة بنجاح! 📸');
-        addNotification('صورة جديدة', `تم تحديث صورة ${name} من الفصل ${cls}`, 'info');
+// نظام الرسائل التشجيعية
+function sendEncouragement(cls, studentName, messageType = 'general') {
+    const messages = {
+        general: [
+            "أحسنت! استمر في التقدم 🌟",
+            "أنت مبدع، ونفتخر بك 🎯",
+            "تقدمك رائع، حافظ عليه 💪",
+            "الله يبارك فيك ويوفقك 🙏",
+            "أنت مثال رائع للاجتهاد ✨"
+        ],
+        points: [
+            "مبارك! نقاطك في زيادة مستمرة 🏆",
+            "واو! وصلت لنتيجة ممتازة 🎉",
+            "تستحق أكثر بكثير، استمر هكذا 💫",
+            "نقاطك تخبرنا أنك مميز 🌈",
+            "مبروك على الإنجاز الرائع 🥳"
+        ],
+        attendance: [
+            "متابعتك مستمرة، هذا رائع 📅",
+            "الحضور المستمر مفتاح النجاح 🔑",
+            "شكراً على التزامك الدائم 🤝",
+            "حضورك يضيف الكثير للفصل 🌸",
+            "نشاطك اليومي ملهم للجميع 🌟"
+        ]
     };
-    reader.readAsDataURL(file);
+
+    const selectedMessages = messages[messageType] || messages.general;
+    const randomMessage = selectedMessages[Math.floor(Math.random() * selectedMessages.length)];
+    
+    // حفظ الرسالة في سجل الطالب
+    const studentMessages = LS.get('studentMessages') || {};
+    const studentKey = `${cls}_${studentName}`;
+    if (!studentMessages[studentKey]) {
+        studentMessages[studentKey] = [];
+    }
+    
+    const messageData = {
+        message: randomMessage,
+        date: new Date().toLocaleString('ar-EG'),
+        type: messageType,
+        from: 'الخادم'
+    };
+    
+    studentMessages[studentKey].push(messageData);
+    LS.set('studentMessages', studentMessages);
+    
+    // إضافة إشعار
+    addNotification('رسالة تشجيع', `تم إرسال رسالة تشجيع لـ ${studentName}`, 'success');
+    
+    return randomMessage;
 }
 
-function getStudentPhoto(cls, name) {
-    const studentPhotos = LS.get('studentPhotos') || {};
-    return studentPhotos[`${cls}_${name}`] || 'https://via.placeholder.com/60/fffaf2/d9b382?text=👦';
-}
-
-/* لوحة المتصدرين */
-function showLeaderboard() {
-    const students = LS.get('students') || {};
-    const studentPoints = LS.get('studentPoints') || {};
+// عرض تفاصيل تقدم الطالب
+function showStudentProgress(cls, studentName) {
+    const student = getStudentData(cls, studentName);
+    const points = getStudentPoints(cls, studentName);
+    const streak = calculateStreak(cls, studentName);
+    const attendanceRate = calculateAttendanceRate(cls, studentName);
+    const performance = calculatePerformance(cls, studentName);
     
-    let allStudents = [];
-    
-    Object.keys(students).forEach(cls => {
-        students[cls].forEach(student => {
-            const points = getStudentPoints(cls, student.name);
-            allStudents.push({
-                name: student.name,
-                class: cls,
-                points: points,
-                photo: getStudentPhoto(cls, student.name),
-                streak: calculateStreak(cls, student.name)
-            });
-        });
-    });
-    
-    allStudents.sort((a, b) => b.points - a.points);
-    
-    const leaderboardHTML = allStudents.slice(0, 10).map((student, index) => {
-        let medal = '';
-        if (index === 0) medal = ' 🥇';
-        else if (index === 1) medal = ' 🥈';
-        else if (index === 2) medal = ' 🥉';
-        
-        return `
-            <div class="leaderboard-item">
-                <div class="leaderboard-rank">${index + 1}</div>
-                <img src="${student.photo}" alt="${student.name}" class="leaderboard-avatar">
-                <div class="leaderboard-info">
-                    <div class="leaderboard-name">${student.name} ${medal}</div>
-                    <div class="leaderboard-points">الفصل: ${student.class} | النقاط: ${student.points} | المتابعة: ${student.streak} أيام</div>
+    const progressHTML = `
+        <div class="student-progress-card fade-in">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                <img src="${getStudentPhoto(cls, studentName)}" alt="${studentName}" class="profile-img" style="width:50px;height:50px">
+                <div>
+                    <h4 style="margin:0">${studentName}</h4>
+                    <div class="performance-badge performance-${performance.level}">${performance.text}</div>
+                    <div>الفصل: ${cls}</div>
                 </div>
             </div>
-        `;
-    }).join('');
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">${points}</div>
+                    <div class="stat-label">النقاط</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${streak}</div>
+                    <div class="stat-label">أيام متابعة</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${attendanceRate}%</div>
+                    <div class="stat-label">نسبة الحضور</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${student.answeredDates?.length || 0}</div>
+                    <div class="stat-label">فعاليات شارك فيها</div>
+                </div>
+            </div>
+            
+            <div style="margin:12px 0">
+                <strong>تقدم المشاركة:</strong>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width:${attendanceRate}%"></div>
+                </div>
+            </div>
+            
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+                <button class="encourage-btn" onclick="sendEncouragementMessage('${cls}', '${studentName}', 'general')">
+                    💌 رسالة تشجيع
+                </button>
+                <button class="encourage-btn" style="background:#e84393" onclick="sendEncouragementMessage('${cls}', '${studentName}', 'points')">
+                    🏆 تشجيع بالنقاط
+                </button>
+                <button class="encourage-btn" style="background:#fd79a8" onclick="sendEncouragementMessage('${cls}', '${studentName}', 'attendance')">
+                    📅 تشجيع بالحضور
+                </button>
+            </div>
+            
+            <div>
+                <strong>آخر الرسائل:</strong>
+                ${getLastMessages(cls, studentName)}
+            </div>
+        </div>
+    `;
     
     const w = window.open('', '_blank', 'width=400,height=600');
     w.document.write(`
         <html dir="rtl">
             <head>
                 <meta charset="utf-8">
-                <title>لوحة المتصدرين</title>
+                <title>تقدم ${studentName}</title>
                 <style>
-                    body { font-family: 'Cairo', Arial; margin: 20px; background: #fffaf2; }
-                    .leaderboard-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #ddd; gap: 12px; }
-                    .leaderboard-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
-                    .leaderboard-rank { font-size: 1.2rem; font-weight: 800; min-width: 30px; }
-                    .leaderboard-name { font-weight: 700; }
-                    .leaderboard-points { color: #666; font-size: 0.9rem; }
+                    body { font-family: 'Cairo', Arial; margin: 15px; background: #f8f9fa; }
+                    .student-progress-card { background: white; padding: 15px; border-radius: 10px; margin: 10px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+                    .stat-card { background: #f8f9fa; padding: 10px; border-radius: 8px; text-align: center; }
+                    .stat-number { font-size: 1.3rem; font-weight: 800; color: #2c3e50; }
+                    .stat-label { font-size: 0.8rem; color: #7f8c8d; }
+                    .progress-bar { background: #e0e0e0; border-radius: 10px; height: 20px; margin: 10px 0; overflow: hidden; }
+                    .progress-fill { background: linear-gradient(90deg, #74b9ff, #0984e3); height: 100%; border-radius: 10px; transition: width 0.3s; }
+                    .encourage-btn { background: #00b894; color: white; padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; margin: 4px; font-size: 0.8rem; }
+                    .performance-badge { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: 700; }
+                    .performance-excellent { background: #00b894; color: white; }
+                    .performance-good { background: #74b9ff; color: white; }
+                    .performance-average { background: #fdcb6e; color: white; }
+                    .performance-needs-improvement { background: #e17055; color: white; }
                 </style>
             </head>
             <body>
-                <h2 style="text-align: center;">🏆 لوحة المتصدرين</h2>
-                ${leaderboardHTML || '<p style="text-align: center;">لا توجد بيانات بعد</p>'}
-                <button onclick="window.close()" style="margin-top: 20px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer;">إغلاق</button>
+                <h3 style="text-align:center; color:#2d3436;">📊 تقدم الطالب</h3>
+                ${progressHTML}
+                <button onclick="window.close()" style="margin-top: 15px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;">إغلاق</button>
             </body>
         </html>
     `);
 }
 
-/* الأنشطة التفاعلية الجديدة */
-function createTrueFalseActivity(question, correctAnswer) {
-    return {
-        type: 'trueFalse',
-        question: question,
-        correctAnswer: correctAnswer,
-        points: 15
-    };
-}
-
-function createSortingActivity(items, correctOrder) {
-    return {
-        type: 'sorting',
-        items: items,
-        correctOrder: correctOrder,
-        points: 25
-    };
-}
-
-function createMatchingActivity(pairs) {
-    return {
-        type: 'matching',
-        pairs: pairs,
-        points: 20
-    };
-}
-
-function createChallengeActivity(question, options, correctIndex, challengeType = 'group') {
-    return {
-        type: 'challenge',
-        question: question,
-        options: options,
-        correctIndex: correctIndex,
-        challengeType: challengeType,
-        points: 30
-    };
-}
-
-// دالة لعرض النشاط التفاعلي
-function displayInteractiveActivity(activity, cls, name) {
-    const contentDiv = document.getElementById('kholwaContent');
-    
-    switch(activity.type) {
-        case 'trueFalse':
-            displayTrueFalseActivity(activity, cls, name, contentDiv);
-            break;
-        case 'sorting':
-            displaySortingActivity(activity, cls, name, contentDiv);
-            break;
-        case 'matching':
-            displayMatchingActivity(activity, cls, name, contentDiv);
-            break;
-        case 'challenge':
-            displayChallengeActivity(activity, cls, name, contentDiv);
-            break;
-    }
-}
-
-function displayTrueFalseActivity(activity, cls, name, container) {
-    container.innerHTML += `
-        <div class="activity-card">
-            <h4>${activity.question}</h4>
-            <div class="true-false-btns">
-                <button class="true-false-btn true-btn" onclick="handleTrueFalseAnswer(true, '${cls}', '${name}', ${activity.correctAnswer})">✅ صح</button>
-                <button class="true-false-btn false-btn" onclick="handleTrueFalseAnswer(false, '${cls}', '${name}', ${activity.correctAnswer})">❌ خطأ</button>
-            </div>
-        </div>
-    `;
-}
-
-function displaySortingActivity(activity, cls, name, container) {
-    const shuffledItems = [...activity.items].sort(() => Math.random() - 0.5);
-    
-    container.innerHTML += `
-        <div class="activity-card">
-            <h4>رتب العناصر بالترتيب الصحيح:</h4>
-            <ul id="sortableList" class="sortable-list">
-                ${shuffledItems.map((item, index) => `
-                    <li class="sortable-item" data-index="${index}">${item}</li>
-                `).join('')}
-            </ul>
-            <button class="btn btn-blue" onclick="checkSortingAnswer('${cls}', '${name}', ${JSON.stringify(activity.correctOrder)})">تحقق من الإجابة</button>
-        </div>
-    `;
-    
-    makeSortable();
-}
-
-function displayMatchingActivity(activity, cls, name, container) {
-    const leftItems = activity.pairs.map(pair => pair.left);
-    const rightItems = activity.pairs.map(pair => pair.right).sort(() => Math.random() - 0.5);
-    
-    container.innerHTML += `
-        <div class="activity-card">
-            <h4>صل كل عنصر بما يناسبه:</h4>
-            <div class="matching-container">
-                <div>
-                    ${leftItems.map(item => `<div class="matching-item" data-left="${item}">${item}</div>`).join('')}
-                </div>
-                <div>
-                    ${rightItems.map(item => `<div class="matching-item" data-right="${item}">${item}</div>`).join('')}
-                </div>
-            </div>
-            <button class="btn btn-blue" onclick="checkMatchingAnswer('${cls}', '${name}', ${JSON.stringify(activity.pairs)})">تحقق من الإجابة</button>
-        </div>
-    `;
-    
-    setupMatching();
-}
-
-function displayChallengeActivity(activity, cls, name, container) {
-    container.innerHTML += `
-        <div class="challenge-card">
-            <h4>🏆 تحدي جماعي 🏆</h4>
-            <p>${activity.question}</p>
-            <div class="true-false-btns">
-                ${activity.options.map((option, index) => `
-                    <button class="true-false-btn" style="background:#9b59b6" onclick="handleChallengeAnswer(${index}, '${cls}', '${name}', ${activity.correctIndex})">${option}</button>
-                `).join('')}
-            </div>
-        </div>
-    `;
-}
-
-// معالجة إجابات الأنشطة
-function handleTrueFalseAnswer(userAnswer, cls, name, correctAnswer) {
-    const isCorrect = userAnswer === correctAnswer;
-    const pointsResult = calculatePoints(cls, name, isCorrect, 'trueFalse');
-    
-    const resultArea = document.getElementById('resultArea');
-    if (isCorrect) {
-        resultArea.innerHTML = `
-            <div class="center">
-                أحسنت! إجابة صحيحة ✅<br>
-                <small>كسبت ${pointsResult.earned} نقطة!</small><br>
-                <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
-            </div>
-        `;
-    } else {
-        resultArea.innerHTML = `
-            <div class="center">
-                حاول مرة أخرى 💪<br>
-                <small>الإجابة الصحيحة: ${correctAnswer ? 'صح' : 'خطأ'}</small><br>
-                <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
-            </div>
-        `;
-    }
-    
-    addNotification('نشاط صح/خطأ', `${name} أجاب على سؤال صح/خطأ`, isCorrect ? 'success' : 'warning');
-}
-
-function checkSortingAnswer(cls, name, correctOrder) {
-    const sortableList = document.getElementById('sortableList');
-    const currentOrder = Array.from(sortableList.children).map(item => 
-        activity.items.indexOf(item.textContent)
-    );
-    
-    const isCorrect = JSON.stringify(currentOrder) === JSON.stringify(correctOrder);
-    const pointsResult = calculatePoints(cls, name, isCorrect, 'sorting');
-    
-    const resultArea = document.getElementById('resultArea');
-    if (isCorrect) {
-        resultArea.innerHTML = `
-            <div class="center">
-                ممتاز! الترتيب صحيح ✅<br>
-                <small>كسبت ${pointsResult.earned} نقطة!</small><br>
-                <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
-            </div>
-        `;
-    } else {
-        resultArea.innerHTML = `
-            <div class="center">
-                ترتيب غير صحيح، حاول مرة أخرى 💪<br>
-                <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
-            </div>
-        `;
-    }
-    
-    addNotification('نشاط ترتيب', `${name} شارك في نشاط الترتيب`, isCorrect ? 'success' : 'warning');
-}
-
-function checkMatchingAnswer(cls, name, pairs) {
-    // تنفيذ منطق التحقق من التوصيل
-    const isCorrect = true; // يجب استبدال هذا بالمنطق الفعلي
-    const pointsResult = calculatePoints(cls, name, isCorrect, 'matching');
-    
-    const resultArea = document.getElementById('resultArea');
-    resultArea.innerHTML = `
-        <div class="center">
-            ${isCorrect ? 'أحسنت! التوصيل صحيح ✅' : 'توصيل غير صحيح، حاول مرة أخرى 💪'}<br>
-            <small>كسبت ${pointsResult.earned} نقطة!</small><br>
-            <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
-        </div>
-    `;
-    
-    addNotification('نشاط توصيل', `${name} شارك في نشاط التوصيل`, isCorrect ? 'success' : 'warning');
-}
-
-function handleChallengeAnswer(answerIndex, cls, name, correctIndex) {
-    const isCorrect = answerIndex === correctIndex;
-    const pointsResult = calculatePoints(cls, name, isCorrect, 'challenge');
-    
-    const resultArea = document.getElementById('resultArea');
-    if (isCorrect) {
-        resultArea.innerHTML = `
-            <div class="center">
-                مبروك! فزت بالتحدي 🏆<br>
-                <small>كسبت ${pointsResult.earned} نقطة!</small><br>
-                <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
-            </div>
-        `;
-    } else {
-        resultArea.innerHTML = `
-            <div class="center">
-                لم تفز بالتحدي هذه المرة 💪<br>
-                <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
-            </div>
-        `;
-    }
-    
-    addNotification('تحدي جماعي', `${name} شارك في التحدي الجماعي`, isCorrect ? 'success' : 'info');
-}
-
-/* نظام الإشعارات */
-function addNotification(title, message, type = 'info') {
-    const notifications = LS.get('notifications') || [];
-    const notification = {
-        id: Date.now(),
-        title: title,
-        message: message,
-        type: type,
-        date: new Date().toLocaleString('ar-EG'),
-        read: false
-    };
-    
-    notifications.unshift(notification);
-    // حفظ فقط آخر 50 إشعار
-    LS.set('notifications', notifications.slice(0, 50));
-    updateNotifications();
-}
-
-function updateNotifications() {
-    const notifications = LS.get('notifications') || [];
-    const unreadCount = notifications.filter(n => !n.read).length;
-    
-    // تحديث شارة الإشعارات
-    const badge = document.getElementById('notificationBadge');
-    if (badge) {
-        badge.textContent = unreadCount;
-        badge.style.display = unreadCount > 0 ? 'flex' : 'none';
-    }
-    
-    // تحديث قائمة الإشعارات في لوحة المسؤول
-    const notificationsList = document.getElementById('notificationsList');
-    if (notificationsList) {
-        if (notifications.length === 0) {
-            notificationsList.innerHTML = '<p class="note">لا توجد إشعارات</p>';
-        } else {
-            notificationsList.innerHTML = notifications.slice(0, 10).map(notif => `
-                <div class="notification-item" style="border-left: 4px solid ${
-                    notif.type === 'success' ? '#27ae60' : 
-                    notif.type === 'warning' ? '#f39c12' : 
-                    notif.type === 'error' ? '#e74c3c' : '#3498db'
-                }">
-                    <strong>${notif.title}</strong><br>
-                    <small>${notif.message}</small><br>
-                    <small style="color:#666">${notif.date}</small>
-                    ${!notif.read ? '<span style="color:red">●</span>' : ''}
-                </div>
-            `).join('');
-        }
-    }
-}
-
-function markAllNotificationsAsRead() {
-    const notifications = LS.get('notifications') || [];
-    notifications.forEach(notif => notif.read = true);
-    LS.set('notifications', notifications);
-    updateNotifications();
-}
-
-/* النسخ الاحتياطي التلقائي */
-function setupAutoBackup() {
-    if (LS.get('autoBackup')) {
-        // نسخ احتياطي كل ساعة
-        setInterval(() => {
-            const backupData = {
-                students: LS.get('students'),
-                points: LS.get('studentPoints'),
-                photos: LS.get('studentPhotos'),
-                history: LS.get('history'),
-                timestamp: new Date().toISOString()
-            };
-            
-            LS.set('lastBackup', backupData);
-            LS.set('backupTimestamp', new Date().toLocaleString('ar-EG'));
-            
-            console.log('تم النسخ الاحتياطي التلقائي:', new Date().toLocaleString('ar-EG'));
-        }, 60 * 60 * 1000); // كل ساعة
-    }
-}
-
-// استدعاء النسخ الاحتياطي عند التحميل
-setupAutoBackup();
-
-/* التحليلات والرسوم البيانية */
-function showAnalytics() {
+// دالة مساعدة للحصول على بيانات الطالب
+function getStudentData(cls, studentName) {
     const students = LS.get('students') || {};
+    const classStudents = students[cls] || [];
+    return classStudents.find(s => s.name === studentName) || {};
+}
+
+// حساب نسبة الحضور
+function calculateAttendanceRate(cls, studentName) {
     const history = LS.get('history') || [];
-    const studentPoints = LS.get('studentPoints') || {};
+    const student = getStudentData(cls, studentName);
+    const totalDays = history.length;
+    const attendedDays = student.answeredDates?.length || 0;
     
-    let totalStudents = 0;
-    let totalPoints = 0;
-    let classDistribution = { '1':0, '2':0, '3':0, '4':0, '5':0, '6':0 };
+    return totalDays > 0 ? Math.round((attendedDays / totalDays) * 100) : 0;
+}
+
+// حساب أداء الطالب
+function calculatePerformance(cls, studentName) {
+    const attendanceRate = calculateAttendanceRate(cls, studentName);
+    const points = getStudentPoints(cls, studentName);
     
-    Object.keys(students).forEach(cls => {
-        classDistribution[cls] = students[cls].length;
-        totalStudents += students[cls].length;
+    if (attendanceRate >= 90 && points >= 200) {
+        return { level: 'excellent', text: 'ممتاز' };
+    } else if (attendanceRate >= 75 && points >= 100) {
+        return { level: 'good', text: 'جيد جداً' };
+    } else if (attendanceRate >= 50 && points >= 50) {
+        return { level: 'average', text: 'جيد' };
+    } else {
+        return { level: 'needs-improvement', text: 'يحتاج تحسين' };
+    }
+}
+
+// إرسال رسالة تشجيعية مع تأثير
+function sendEncouragementMessage(cls, studentName, messageType) {
+    const message = sendEncouragement(cls, studentName, messageType);
+    
+    // تأثير بصري
+    showConfetti();
+    
+    alert(`✅ تم إرسال الرسالة:\n"${message}"`);
+}
+
+// الحصول على آخر الرسائل
+function getLastMessages(cls, studentName) {
+    const studentMessages = LS.get('studentMessages') || {};
+    const studentKey = `${cls}_${studentName}`;
+    const messages = studentMessages[studentKey] || [];
+    
+    const lastMessages = messages.slice(-3).reverse();
+    
+    if (lastMessages.length === 0) {
+        return '<p style="color:#666; text-align:center; margin:10px 0;">لا توجد رسائل سابقة</p>';
+    }
+    
+    return lastMessages.map(msg => `
+        <div style="background:#f8f9fa; padding:8px; margin:5px 0; border-radius:8px; border-right:3px solid #74b9ff;">
+            <div style="font-weight:700;">${msg.message}</div>
+            <small style="color:#666;">${msg.date}</small>
+        </div>
+    `).join('');
+}
+
+// لوحة تحكم الخادم المحسنة
+function enhanceTeacherPanel() {
+    const teacherPanel = document.getElementById('teacherPanel');
+    if (teacherPanel && !document.getElementById('teacherDashboard')) {
+        const teacherClass = document.getElementById('teacherClass').innerText;
         
-        students[cls].forEach(student => {
-            totalPoints += getStudentPoints(cls, student.name);
-        });
-    });
+        const dashboardHTML = `
+            <div class="teacher-dashboard fade-in">
+                <h4 style="margin:0; text-align:center;">📊 لوحة متابعة الفصل ${teacherClass}</h4>
+                <div style="display:flex; justify-content:space-around; margin-top:10px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:1.5rem; font-weight:800;">${getClassStats(teacherClass).totalStudents}</div>
+                        <small>إجمالي الطلاب</small>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:1.5rem; font-weight:800;">${getClassStats(teacherClass).activeToday}</div>
+                        <small>نشط اليوم</small>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:1.5rem; font-weight:800;">${getClassStats(teacherClass).avgPoints}</div>
+                        <small>متوسط النقاط</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin:15px 0;">
+                <button class="btn btn-blue" onclick="showClassProgress('${teacherClass}')">
+                    📈 عرض تقدم الفصل
+                </button>
+                <button class="btn" style="background:#00b894; color:white; margin-top:8px;" onclick="sendBulkEncouragement('${teacherClass}')">
+                    💫 تشجيع جماعي
+                </button>
+            </div>
+        `;
+        
+        const dashboardElement = document.createElement('div');
+        dashboardElement.id = 'teacherDashboard';
+        dashboardElement.innerHTML = dashboardHTML;
+        
+        const statusElement = document.getElementById('teacherStatus');
+        teacherPanel.insertBefore(dashboardElement, statusElement);
+    }
+}
+
+// إحصائيات الفصل
+function getClassStats(cls) {
+    const students = LS.get('students') || {};
+    const classStudents = students[cls] || [];
+    const kh = LS.get('kholwa');
+    const today = todayDate();
+    
+    const totalStudents = classStudents.length;
+    const activeToday = classStudents.filter(s => 
+        s.answeredDates?.includes(today)
+    ).length;
+    
+    const totalPoints = classStudents.reduce((sum, student) => 
+        sum + getStudentPoints(cls, student.name), 0
+    );
     
     const avgPoints = totalStudents > 0 ? Math.round(totalPoints / totalStudents) : 0;
     
-    const analyticsHTML = `
-        <h3>📊 الإحصائيات العامة</h3>
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number">${totalStudents}</div>
-                <div class="stat-label">إجمالي الطلاب</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${history.length}</div>
-                <div class="stat-label">عدد الخلوات</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${totalPoints}</div>
-                <div class="stat-label">إجمالي النقاط</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${avgPoints}</div>
-                <div class="stat-label">متوسط النقاط</div>
-            </div>
-        </div>
+    return { totalStudents, activeToday, avgPoints };
+}
+
+// عرض تقدم الفصل كاملاً
+function showClassProgress(cls) {
+    const students = LS.get('students') || {};
+    const classStudents = students[cls] || [];
+    
+    let progressHTML = `
+        <h3 style="text-align:center;">📊 تقدم فصل ${cls}</h3>
+        <div style="max-height:400px; overflow-y:auto;">
+    `;
+    
+    classStudents.forEach(student => {
+        const performance = calculatePerformance(cls, student.name);
+        const points = getStudentPoints(cls, student.name);
+        const attendanceRate = calculateAttendanceRate(cls, student.name);
         
-        <div class="chart-container">
-            <h4>توزيع الطلاب على الفصول</h4>
-            ${Object.keys(classDistribution).map(cls => `
-                <div style="margin: 5px 0;">
-                    <strong>الفصل ${cls}:</strong> ${classDistribution[cls]} طالب
-                    <div style="background:#e0e0e0; border-radius:5px; height:20px; margin-top:5px;">
-                        <div style="background:#3498db; height:100%; border-radius:5px; width:${(classDistribution[cls] / totalStudents) * 100}%"></div>
+        progressHTML += `
+            <div class="student-progress-card" style="cursor:pointer;" onclick="showStudentProgress('${cls}', '${student.name}')">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="${getStudentPhoto(cls, student.name)}" alt="${student.name}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+                        <div>
+                            <strong>${student.name}</strong>
+                            <div class="performance-badge performance-${performance.level}">${performance.text}</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div>${points} نقطة</div>
+                        <small>${attendanceRate}% حضور</small>
                     </div>
                 </div>
-            `).join('')}
-        </div>
-        
-        <div class="chart-container">
-            <h4>أعلى 5 طلاب في النقاط</h4>
-            ${getTopStudents(5).map((student, index) => `
-                <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee">
-                    <span>${index + 1}. ${student.name} (فصل ${student.class})</span>
-                    <strong>${student.points} نقطة</strong>
-                </div>
-            `).join('')}
-        </div>
-    `;
-    
-    const w = window.open('', '_blank', 'width=500,height=700');
-    w.document.write(`
-        <html dir="rtl">
-            <head>
-                <meta charset="utf-8">
-                <title>التقارير والإحصائيات</title>
-                <style>
-                    body { font-family: 'Cairo', Arial; margin: 20px; background: #f8f9fa; }
-                    .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-                    .stat-number { font-size: 2rem; font-weight: 800; color: #2c3e50; }
-                    .stat-label { font-size: 0.9rem; color: #7f8c8d; margin-top: 5px; }
-                    .chart-container { background: white; padding: 15px; border-radius: 10px; margin: 15px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-                </style>
-            </head>
-            <body>
-                ${analyticsHTML}
-                <button onclick="window.close()" style="margin-top: 20px; padding: 12px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;">إغلاق</button>
-            </body>
-        </html>
-    `);
-}
-
-function getTopStudents(limit = 5) {
-    const students = LS.get('students') || {};
-    const studentPoints = LS.get('studentPoints') || {};
-    
-    let allStudents = [];
-    
-    Object.keys(students).forEach(cls => {
-        students[cls].forEach(student => {
-            allStudents.push({
-                name: student.name,
-                class: cls,
-                points: getStudentPoints(cls, student.name)
-            });
-        });
+            </div>
+        `;
     });
     
-    return allStudents.sort((a, b) => b.points - a.points).slice(0, limit);
-}
-
-// ... (بقية الدوال الموجودة سابقاً تبقى كما هي)
-
-// تحديث واجهة المسؤول لإضافة الأزرار الجديدة
-function updateAdminPanel() {
-    const adminPanel = document.getElementById('adminPanel');
-    if (adminPanel) {
-        // إضافة زر التقارير إذا لم يكن موجوداً
-        if (!document.getElementById('analyticsBtn')) {
-            const analyticsBtn = document.createElement('button');
-            analyticsBtn.id = 'analyticsBtn';
-            analyticsBtn.className = 'btn btn-blue';
-            analyticsBtn.innerHTML = '📊 التقارير والإحصائيات';
-            analyticsBtn.onclick = showAnalytics;
-            analyticsBtn.style.marginTop = '10px';
-            
-            // إضافة زر النسخ الاحتياطي
-            const backupBtn = document.createElement('button');
-            backupBtn.className = 'btn';
-            backupBtn.style.background = '#27ae60';
-            backupBtn.style.color = 'white';
-            backupBtn.innerHTML = '💾 النسخ الاحتياطي';
-            backupBtn.onclick = createManualBackup;
-            backupBtn.style.marginTop = '10px';
-            
-            // إضافة زر الإشعارات
-            const notificationsBtn = document.createElement('button');
-            notificationsBtn.className = 'btn';
-            notificationsBtn.style.background = '#e67e22';
-            notificationsBtn.style.color = 'white';
-            notificationsBtn.innerHTML = '🔔 الإشعارات';
-            notificationsBtn.onclick = showNotificationsPanel;
-            notificationsBtn.style.marginTop = '10px';
-            
-            // إضافة الأزرار قبل زر العودة
-            const backBtn = adminPanel.querySelector('.back-btn');
-            adminPanel.insertBefore(notificationsBtn, backBtn);
-            adminPanel.insertBefore(backupBtn, backBtn);
-            adminPanel.insertBefore(analyticsBtn, backBtn);
-        }
-    }
-}
-
-function createManualBackup() {
-    const backupData = {
-        students: LS.get('students'),
-        points: LS.get('studentPoints'),
-        photos: LS.get('studentPhotos'),
-        history: LS.get('history'),
-        teachers: LS.get('teachers'),
-        timestamp: new Date().toISOString()
-    };
+    progressHTML += `</div>`;
     
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup-kholwa-${todayDate()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    
-    alert('تم إنشاء نسخة احتياطية ✅');
-    addNotification('نسخ احتياطي', 'تم إنشاء نسخة احتياطية يدوية', 'success');
-}
-
-function showNotificationsPanel() {
-    const notifications = LS.get('notifications') || [];
-    
-    const notificationsHTML = `
-        <h3>🔔 الإشعارات</h3>
-        <button class="btn" style="background:#95a5a6; color:white; margin-bottom:10px;" onclick="markAllNotificationsAsRead()">تعيين الكل كمقروء</button>
-        <div id="notificationsList">
-            ${notifications.length === 0 ? '<p class="note">لا توجد إشعارات</p>' : ''}
-        </div>
-    `;
-    
-    const w = window.open('', '_blank', 'width=400,height=500');
+    const w = window.open('', '_blank', 'width=450,height=500');
     w.document.write(`
         <html dir="rtl">
             <head>
                 <meta charset="utf-8">
-                <title>الإشعارات</title>
+                <title>تقدم فصل ${cls}</title>
                 <style>
-                    body { font-family: 'Cairo', Arial; margin: 20px; background: #f8f9fa; }
-                    .notification-item { background: white; padding: 12px; margin: 8px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                    body { font-family: 'Cairo', Arial; margin: 15px; background: #f8f9fa; }
+                    .student-progress-card { background: white; padding: 12px; border-radius: 10px; margin: 8px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.2s; }
+                    .student-progress-card:hover { transform: translateX(-5px); }
+                    .performance-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 700; }
+                    .performance-excellent { background: #00b894; color: white; }
+                    .performance-good { background: #74b9ff; color: white; }
+                    .performance-average { background: #fdcb6e; color: white; }
+                    .performance-needs-improvement { background: #e17055; color: white; }
                 </style>
             </head>
             <body>
-                ${notificationsHTML}
-                <button onclick="window.close()" style="margin-top: 20px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer;">إغلاق</button>
+                ${progressHTML}
+                <button onclick="window.close()" style="margin-top: 15px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;">إغلاق</button>
             </body>
         </html>
     `);
-    
-    // تحديث قائمة الإشعارات في النافذة الجديدة
-    setTimeout(() => {
-        if (w.updateNotifications) {
-            w.updateNotifications();
-        }
-    }, 100);
 }
 
-// استدعاء تحديث لوحة المسؤول عند التحميل
+// تشجيع جماعي للفصل
+function sendBulkEncouragement(cls) {
+    const students = LS.get('students') || {};
+    const classStudents = students[cls] || [];
+    
+    let encouragedCount = 0;
+    classStudents.forEach(student => {
+        if (Math.random() > 0.3) { // 70% فرصة لإرسال رسالة
+            sendEncouragement(cls, student.name, 'general');
+            encouragedCount++;
+        }
+    });
+    
+    showConfetti();
+    alert(`✅ تم إرسال رسائل تشجيعية لـ ${encouragedCount} طالب`);
+    addNotification('تشجيع جماعي', `تم إرسال رسائل تشجيعية لـ ${encouragedCount} طالب في فصل ${cls}`, 'success');
+}
+
+/* ============================================
+   اللمسات النهائية وتحسينات تجربة المستخدم
+   ============================================ */
+
+// تأثير الكونفيتي
+function showConfetti() {
+    const confettiContainer = document.createElement('div');
+    confettiContainer.className = 'confetti';
+    document.body.appendChild(confettiContainer);
+    
+    for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti-piece';
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.background = getRandomColor();
+        confetti.style.animationDelay = Math.random() * 5 + 's';
+        confettiContainer.appendChild(confetti);
+    }
+    
+    setTimeout(() => {
+        confettiContainer.remove();
+    }, 5000);
+}
+
+function getRandomColor() {
+    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff8000'];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// تحميل مؤقت
+function showLoading(element) {
+    const originalHTML = element.innerHTML;
+    element.innerHTML = '<div class="loading-spinner"></div> جاري التحميل...';
+    element.disabled = true;
+    
+    return () => {
+        element.innerHTML = originalHTML;
+        element.disabled = false;
+    };
+}
+
+// تحسين دخول الخادم
+function enhancedTeacherLogin() {
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value.trim();
+    const teachers = LS.get('teachers') || [];
+    const found = teachers.find(t => t.username === u && t.password === p);
+    
+    if (!found) {
+        // تأثير الاهتزاز عند خطأ
+        const loginBox = document.getElementById('teacherLoginBox');
+        loginBox.style.animation = 'shake 0.5s';
+        setTimeout(() => loginBox.style.animation = '', 500);
+        return alert('بيانات دخول خاطئة');
+    }
+    
+    document.getElementById('teacherLoginBox').style.display = 'none';
+    document.getElementById('teacherPanel').style.display = 'block';
+    document.getElementById('teacherClass').innerText = found.classId;
+    
+    // تحسين واجهة الخادم
+    enhanceTeacherPanel();
+    loadTeacherStatus(found.classId);
+    
+    // إشعار ترحيبي
+    addNotification('دخول خادم', `مرحباً ${u} في فصل ${found.classId}`, 'info');
+}
+
+// تحديث دخول الخادم لاستخدام الدالة المحسنة
+function teacherLogin() {
+    enhancedTeacherLogin();
+}
+
+// تأثيرات عند الإجابة الصحيحة
+function enhancedHandleChildAnswer(cls, name, answerIndex) {
+    const students = LS.get('students') || {};
+    const list = students[cls] || [];
+    const student = list.find(s => s.name === name);
+    const shared = await fetchShared();
+    const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
+    
+    if (!kh || kh.date !== todayDate()) {
+        alert('الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️');
+        return;
+    }
+    
+    if (!student) return alert('الطفل غير مسجل');
+    student.answeredDates = student.answeredDates || [];
+    if (!student.answeredDates.includes(kh.date)) student.answeredDates.push(kh.date);
+    students[cls] = list;
+    LS.set('students', students);
+    
+    const history = LS.get('history') || [];
+    if (history.length) {
+        const latest = history[history.length - 1];
+        latest.answers = latest.answers || { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] };
+        if (!latest.answers[cls].includes(name)) latest.answers[cls].push(name);
+        latest.qaResponses = latest.qaResponses || { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} };
+        latest.qaResponses[cls][name] = (answerIndex + 1);
+        LS.set('history', history);
+    }
+    
+    const correct = kh.question && (answerIndex === kh.question.correctIndex);
+    const resultArea = document.getElementById('resultArea');
+    
+    // حساب النقاط
+    const pointsResult = calculatePoints(cls, name, correct);
+    
+    if (correct) {
+        // تأثيرات عند الإجابة الصحيحة
+        showConfetti();
+        resultArea.className = 'note bounce';
+        resultArea.innerHTML = `
+            <div class="center">
+                <div style="font-size:2rem;">🎉</div>
+                برافو، بنحبك ❤️<br>
+                <small>كسبت ${pointsResult.earned} نقطة!</small><br>
+                <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
+            </div>
+        `;
+        
+        // إشعار تلقائي للخادم
+        addNotification('إجابة صحيحة', `${name} أجاب إجابة صحيحة في فصل ${cls}`, 'success');
+    } else {
+        resultArea.className = 'note fade-in';
+        resultArea.innerHTML = `
+            <div class="center">
+                بنحبك، حاول مرة تاني 💪<br>
+                <small>كسبت ${pointsResult.earned} نقاط للحضور</small><br>
+                <strong>إجمالي نقاطك: ${pointsResult.total}</strong>
+            </div>
+        `;
+    }
+    
+    loadTeacherStatus(cls);
+    loadReport();
+    refreshHistoryList();
+}
+
+// تهيئة كل التحسينات عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', function() {
-    updateAdminPanel();
+    // تحديث الإشعارات
     updateNotifications();
     
-    // إضافة شارة الإشعارات
-    const homeCard = document.getElementById('home');
-    const notificationIcon = document.createElement('div');
-    notificationIcon.style.position = 'relative';
-    notificationIcon.style.display = 'inline-block';
-    notificationIcon.style.marginLeft = '10px';
-    notificationIcon.innerHTML = `
-        <button class="btn" style="background:#e67e22; color:white; padding:10px;" onclick="showNotificationsPanel()">
-            🔔
-            <span id="notificationBadge" class="notification-badge" style="display:none">0</span>
-        </button>
-    `;
-    homeCard.appendChild(notificationIcon);
+    // إضافة تأثيرات للعناصر
+    const cards = document.querySelectorAll('.card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = (index * 0.1) + 's';
+        card.classList.add('fade-in');
+    });
+    
+    // تحسين تجربة الجوال
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(() => {
+            console.log('Service Worker registered');
+        });
+    }
+    
+    // إضافة تلميحات للمساعدة
+    addTooltips();
 });
+
+// إضافة تلميحات مساعدة
+function addTooltips() {
+    const tooltips = {
+        'adminPass': 'كلمة مرور المسؤول الافتراضية: admin123',
+        'tpass': 'سيتم استخدام هذه الكلمة من قبل الخادم',
+        'childName': 'ادخل اسم الطفل كما هو مسجل',
+        'enterKholwaBtn': 'اضغط لفتح الخلوة ومشاهدة الأنشطة'
+    };
+    
+    Object.keys(tooltips).forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.parentElement.classList.add('tooltip');
+            const tooltipSpan = document.createElement('span');
+            tooltipSpan.className = 'tooltiptext';
+            tooltipSpan.textContent = tooltips[id];
+            element.parentElement.appendChild(tooltipSpan);
+        }
+    });
+}
+
+// تحديث الدوال القديمة لاستخدام المحسنة
+// استبدال handleChildAnswer بالدالة المحسنة
+const originalHandleChildAnswer = handleChildAnswer;
+handleChildAnswer = enhancedHandleChildAnswer;

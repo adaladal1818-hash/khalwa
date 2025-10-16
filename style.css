@@ -60,3 +60,39 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
 .chart-container{background:white;padding:15px;border-radius:10px;margin:10px 0;border:1px solid #ddd}
 .auto-backup{background:#27ae60;color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;margin:5px}
 .notification-item{background:#fff3cd;border:1px solid #ffeaa7;border-radius:8px;padding:10px;margin:5px 0;font-size:0.9rem}
+
+/* ميزات الخدام الجديدة */
+.teacher-dashboard{background:linear-gradient(135deg,#74b9ff,#0984e3);color:white;padding:15px;border-radius:12px;margin:10px 0}
+.student-progress-card{background:white;border-radius:10px;padding:12px;margin:8px 0;border-left:4px solid #74b9ff}
+.progress-bar{background:#e0e0e0;border-radius:10px;height:20px;margin:8px 0;overflow:hidden}
+.progress-fill{background:linear-gradient(90deg,#74b9ff,#0984e3);height:100%;border-radius:10px;transition:width 0.3s}
+.encourage-btn{background:#00b894;color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;margin:4px;font-size:0.8rem}
+.encourage-btn:hover{background:#00a085}
+.performance-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700;margin-right:6px}
+.performance-excellent{background:#00b894;color:white}
+.performance-good{background:#74b9ff;color:white}
+.performance-average{background:#fdcb6e;color:white}
+.performance-needs-improvement{background:#e17055;color:white}
+
+/* اللمسات النهائية وتحسين الواجهة */
+.fade-in{animation:fadeIn 0.5s ease-in}
+@keyframes fadeIn{from{opacity:0} to{opacity:1}}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+.bounce{animation:bounce 0.5s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.floating{animation:floating 3s ease-in-out infinite}
+@keyframes floating{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+/* تحسينات تجربة المستخدم */
+.loading-spinner{display:inline-block;width:20px;height:20px;border:3px solid #f3f3f3;border-top:3px solid #3498db;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.tooltip{position:relative;display:inline-block}
+.tooltip .tooltiptext{visibility:hidden;width:120px;background-color:#555;color:#fff;text-align:center;border-radius:6px;padding:5px;position:absolute;z-index:1;bottom:125%;left:50%;margin-left:-60px;opacity:0;transition:opacity 0.3s}
+.tooltip:hover .tooltiptext{visibility:visible;opacity:1}
+.confetti{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1000}
+.confetti-piece{position:absolute;width:10px;height:10px;background:#ff0;opacity:0;animation:confetti-fall 5s linear}
+@keyframes confetti-fall{0%{transform:translateY(-100px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(360deg);opacity:0}}
+
+/* تحسينات للجوال */
+@media (max-width:480px){.app{padding:10px}.btn{padding:10px}.card{padding:10px}.title{font-size:1.2rem}}

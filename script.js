@@ -1153,4 +1153,211 @@ function resetAll() {
 // تحديث الإشعارات عند التحميل
 document.addEventListener('DOMContentLoaded', function() {
     updateNotifications();
+});/* ============================================
+   نظام الوسائط المتعددة للخلوة - الإصلاح
+   ============================================ */
+
+let currentMediaType = 'text';
+
+function setMediaType(type, event) {
+    console.log('تم النقر على:', type);
+    currentMediaType = type;
+    
+    // إخفاء جميع الحقول أولاً
+    const fields = ['textInput', 'pasteInput', 'cameraInput', 'fileInput'];
+    fields.forEach(field => {
+        const element = document.getElementById(field);
+        if (element) element.style.display = 'none';
+    });
+    
+    // إزالة النشط من جميع الأزرار
+    document.querySelectorAll('.media-type-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // إضافة النشط للزر المحدد
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+    
+    // إظهار الحقل المحدد
+    switch(type) {
+        case 'text':
+            document.getElementById('textInput').style.display = 'block';
+            break;
+        case 'paste':
+            document.getElementById('pasteInput').style.display = 'block';
+            break;
+        case 'camera':
+            document.getElementById('cameraInput').style.display = 'block';
+            initCamera();
+            break;
+        case 'image':
+            document.getElementById('fileInput').style.display = 'block';
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div>
+                    <strong>انقر لرفع صورة</strong>
+                    <p class="note">الصور المدعومة: JPG, PNG, GIF</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+            `;
+            break;
+        case 'pdf':
+            document.getElementById('fileInput').style.display = 'block';
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📄</div>
+                    <strong>انقر لرفع ملف PDF</strong>
+                    <p class="note">رفع ملف PDF</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept=".pdf" onchange="handleFileUpload(event)">
+            `;
+            break;
+        case 'word':
+            document.getElementById('fileInput').style.display = 'block';
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📋</div>
+                    <strong>انقر لرفع ملف Word</strong>
+                    <p class="note">رفع ملف Word</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept=".doc,.docx" onchange="handleFileUpload(event)">
+            `;
+            break;
+    }
+}
+
+// تهيئة الكاميرا
+function initCamera() {
+    const cameraPreview = document.getElementById('cameraPreview');
+    if (!cameraPreview) return;
+    
+    cameraPreview.innerHTML = '<div class="media-status info">جاري تشغيل الكاميرا...</div>';
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                cameraPreview.innerHTML = `
+                    <video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px;"></video>
+                    <button type="button" class="capture-btn" onclick="captureImage()">📸</button>
+                `;
+                const video = document.getElementById('cameraVideo');
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error('خطأ في الكاميرا:', err);
+                cameraPreview.innerHTML = '<div class="media-status error">❌ لا يمكن الوصول للكاميرا. تأكد من الصلاحيات.</div>';
+            });
+    } else {
+        cameraPreview.innerHTML = '<div class="media-status error">❌ المتصفح لا يدعم الكاميرا.</div>';
+    }
+}
+
+// التقاط صورة من الكاميرا
+function captureImage() {
+    const video = document.getElementById('cameraVideo');
+    if (!video) return;
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    
+    canvas.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('kholwaText').value = `![صورة من الكاميرا](${e.target.result})`;
+            document.getElementById('cameraPreview').innerHTML = `
+                <div class="media-status success">✅ تم التقاط الصورة بنجاح!</div>
+                <img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="الصورة الملتقطة">
+            `;
+            
+            // إيقاف الكاميرا
+            const stream = video.srcObject;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+        reader.readAsDataURL(blob);
+    }, 'image/jpeg', 0.8);
+}
+
+// معالجة الرفع
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        if (currentMediaType === 'image') {
+            document.getElementById('kholwaText').value = `![${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع الصورة بنجاح!</div>
+                <img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="${file.name}">
+            `;
+        } else if (currentMediaType === 'pdf') {
+            document.getElementById('kholwaText').value = `[📎 ${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع ملف PDF بنجاح!</div>
+                <div class="file-info">
+                    <div class="file-icon">📄</div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                </div>
+            `;
+        } else if (currentMediaType === 'word') {
+            document.getElementById('kholwaText').value = `[📋 ${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع ملف Word بنجاح!</div>
+                <div class="file-info">
+                    <div class="file-icon">📋</div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                </div>
+            `;
+        }
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// معالجة النسخ واللصق
+function handlePaste(event) {
+    event.preventDefault();
+    const pastedText = event.clipboardData.getData('text');
+    document.getElementById('pasteContent').value = pastedText;
+    document.getElementById('kholwaText').value = pastedText;
+    
+    // إضافة رسالة نجاح
+    const successMsg = document.createElement('div');
+    successMsg.className = 'media-status success';
+    successMsg.textContent = '✅ تم لصق النص بنجاح!';
+    document.getElementById('pasteInput').appendChild(successMsg);
+    
+    // إزالة الرسالة بعد 3 ثواني
+    setTimeout(() => {
+        successMsg.remove();
+    }, 3000);
+}
+
+// تفعيل النص كافتراضي عند دخول المسؤول
+function initMediaTypes() {
+    // تفعيل النص كافتراضي
+    document.getElementById('textInput').style.display = 'block';
+    // تفعيل أول زر
+    const firstBtn = document.querySelector('.media-type-btn');
+    if (firstBtn) firstBtn.classList.add('active');
+}
+
+// استدعاء التهيئة عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    initMediaTypes();
 });

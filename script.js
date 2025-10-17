@@ -796,3 +796,370 @@ function getMediaTypeName(type) {
     };
     return names[type] || type;
 }
+// ============================================
+// دوال التقارير والإحصائيات
+// ============================================
+
+function showAnalytics() {
+    const students = LS.get('students') || {};
+    const history = LS.get('history') || [];
+    const studentPoints = LS.get('studentPoints') || {};
+    
+    let totalStudents = 0;
+    let totalPoints = 0;
+    let classDistribution = { '1':0, '2':0, '3':0, '4':0, '5':0, '6':0 };
+    
+    Object.keys(students).forEach(cls => {
+        classDistribution[cls] = students[cls].length;
+        totalStudents += students[cls].length;
+        
+        students[cls].forEach(student => {
+            totalPoints += getStudentPoints(cls, student.name);
+        });
+    });
+    
+    const avgPoints = totalStudents > 0 ? Math.round(totalPoints / totalStudents) : 0;
+    const totalDays = history.length;
+    
+    const analyticsHTML = `
+        <h3 style="text-align: center; color: #2c3e50;">📊 الإحصائيات العامة</h3>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">${totalStudents}</div>
+                <div class="stat-label">إجمالي الطلاب</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${totalDays}</div>
+                <div class="stat-label">عدد الخلوات</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${totalPoints}</div>
+                <div class="stat-label">إجمالي النقاط</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${avgPoints}</div>
+                <div class="stat-label">متوسط النقاط</div>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <h4>📈 توزيع الطلاب على الفصول</h4>
+            ${Object.keys(classDistribution).map(cls => {
+                const percentage = totalStudents > 0 ? ((classDistribution[cls] / totalStudents) * 100).toFixed(1) : 0;
+                return `
+                <div style="margin: 12px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <strong>الفصل ${cls}:</strong>
+                        <span>${classDistribution[cls]} طالب (${percentage}%)</span>
+                    </div>
+                    <div style="background:#e0e0e0; border-radius:10px; height:20px; overflow:hidden;">
+                        <div style="background:linear-gradient(90deg, #3498db, #2980b9); height:100%; border-radius:10px; width:${percentage}%"></div>
+                    </div>
+                </div>
+                `;
+            }).join('')}
+        </div>
+        
+        <div class="chart-container">
+            <h4>🏆 أعلى 5 طلاب في النقاط</h4>
+            ${getTopStudents(5).map((student, index) => {
+                let medal = '';
+                if (index === 0) medal = '🥇';
+                else if (index === 1) medal = '🥈';
+                else if (index === 2) medal = '🥉';
+                
+                return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.2rem;">${medal}</span>
+                        <div>
+                            <strong>${student.name}</strong>
+                            <div style="color: #666; font-size: 0.8rem;">الفصل ${student.class}</div>
+                        </div>
+                    </div>
+                    <div style="background: #ffd700; color: #000; padding: 4px 12px; border-radius: 15px; font-weight: 700;">
+                        ${student.points} نقطة
+                    </div>
+                </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+    
+    const w = window.open('', '_blank', 'width=500,height=700');
+    w.document.write(`
+        <html dir="rtl">
+            <head>
+                <meta charset="utf-8">
+                <title>التقارير والإحصائيات</title>
+                <style>
+                    body { 
+                        font-family: 'Cairo', Arial; 
+                        margin: 20px; 
+                        background: #f8f9fa; 
+                        line-height: 1.6;
+                    }
+                    .stats-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 12px;
+                        margin: 20px 0;
+                    }
+                    .stat-card {
+                        background: white;
+                        padding: 15px;
+                        border-radius: 12px;
+                        text-align: center;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        border: 1px solid #e0e0e0;
+                    }
+                    .stat-number {
+                        font-size: 1.8rem;
+                        font-weight: 800;
+                        color: #2c3e50;
+                        margin-bottom: 5px;
+                    }
+                    .stat-label {
+                        font-size: 0.85rem;
+                        color: #7f8c8d;
+                    }
+                    .chart-container {
+                        background: white;
+                        padding: 20px;
+                        border-radius: 12px;
+                        margin: 20px 0;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        border: 1px solid #e0e0e0;
+                    }
+                    h4 {
+                        color: #2c3e50;
+                        margin-top: 0;
+                        margin-bottom: 15px;
+                        border-bottom: 2px solid #3498db;
+                        padding-bottom: 8px;
+                    }
+                </style>
+            </head>
+            <body>
+                ${analyticsHTML}
+                <button onclick="window.close()" style="margin-top: 20px; padding: 12px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 1rem;">إغلاق</button>
+            </body>
+        </html>
+    `);
+}
+
+// دالة مساعدة للحصول على أفضل الطلاب
+function getTopStudents(limit = 5) {
+    const students = LS.get('students') || {};
+    let allStudents = [];
+    
+    Object.keys(students).forEach(cls => {
+        students[cls].forEach(student => {
+            allStudents.push({
+                name: student.name,
+                class: cls,
+                points: getStudentPoints(cls, student.name)
+            });
+        });
+    });
+    
+    return allStudents.sort((a, b) => b.points - a.points).slice(0, limit);
+}
+
+// ============================================
+// دوال النسخ الاحتياطي
+// ============================================
+
+function createManualBackup() {
+    try {
+        const backupData = {
+            students: LS.get('students'),
+            points: LS.get('studentPoints'),
+            photos: LS.get('studentPhotos'),
+            history: LS.get('history'),
+            teachers: LS.get('teachers'),
+            notifications: LS.get('notifications'),
+            timestamp: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup-kholwa-${todayDate()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert('✅ تم إنشاء نسخة احتياطية بنجاح!\nتم تحميل الملف: ' + a.download);
+        addNotification('نسخ احتياطي', 'تم إنشاء نسخة احتياطية يدوية', 'success');
+        
+    } catch (error) {
+        console.error('خطأ في النسخ الاحتياطي:', error);
+        alert('❌ حدث خطأ أثناء إنشاء النسخة الاحتياطية');
+    }
+}
+
+// ============================================
+// دوال تصفير البيانات
+// ============================================
+
+function resetAll() {
+    if (confirm('⚠️ هل أنت متأكد من تصفير جميع البيانات؟\n\nهذا الإجراء سيحذف:\n• جميع الطلاب\n• جميع النقاط\n• جميع الصور\n• جميع الخلوات\n• جميع الخدام\n• جميع الإشعارات\n\n❗ هذا الإجراء لا يمكن التراجع عنه.')) {
+        if (confirm('❌ التأكيد النهائي:\nهل أنت متأكد تماماً من حذف جميع البيانات؟')) {
+            try {
+                // حفظ نسخة احتياطية تلقائية قبل الحذف
+                const autoBackupData = {
+                    students: LS.get('students'),
+                    points: LS.get('studentPoints'),
+                    photos: LS.get('studentPhotos'),
+                    history: LS.get('history'),
+                    teachers: LS.get('teachers'),
+                    timestamp: new Date().toISOString(),
+                    note: 'نسخة احتياطية تلقائية قبل التصفير'
+                };
+                
+                const blob = new Blob([JSON.stringify(autoBackupData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `auto-backup-before-reset-${todayDate()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // تصفير جميع البيانات
+                localStorage.clear();
+                
+                // إعادة تهيئة البيانات الأساسية
+                initializeData();
+                
+                alert('✅ تم تصفير جميع البيانات بنجاح!\nتم إنشاء نسخة احتياطية تلقائية قبل الحذف.');
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('خطأ في تصفير البيانات:', error);
+                alert('❌ حدث خطأ أثناء تصفير البيانات');
+            }
+        }
+    }
+}
+
+// ============================================
+// دوال تفاصيل اليوم
+// ============================================
+
+function showDayDetails(index) {
+    const history = LS.get('history') || [];
+    const day = history[index];
+    
+    if (!day) {
+        alert('❌ لا توجد بيانات لهذا اليوم');
+        return;
+    }
+    
+    const students = LS.get('students') || {};
+    const totalDays = history.length;
+    
+    let html = `
+        <h3 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+            📅 تفاصيل اليوم: ${day.date}
+        </h3>
+        <h4 style="color: #7f8c8d; text-align: center;">${day.title || 'خلوة'}</h4>
+        
+        <div style="background: #e8f4fd; padding: 15px; border-radius: 10px; margin: 15px 0;">
+            <strong>⏰ وقت الخلوة:</strong><br>
+            البداية: ${new Date(day.startISO).toLocaleString('ar-EG')}<br>
+            النهاية: ${new Date(day.endISO).toLocaleString('ar-EG')}
+        </div>
+    `;
+    
+    // إحصائيات المشاركة
+    let totalParticipants = 0;
+    Object.keys(day.answers || {}).forEach(cls => {
+        totalParticipants += (day.answers[cls] || []).length;
+    });
+    
+    html += `
+        <div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin: 10px 0;">
+            <strong>📊 إحصائيات المشاركة:</strong><br>
+            إجمالي المشاركين: ${totalParticipants} طالب
+        </div>
+    `;
+    
+    // تفاصيل كل فصل
+    Object.keys(day.answers || {}).forEach(cls => {
+        const classStudents = day.answers[cls] || [];
+        if (classStudents.length > 0) {
+            html += `
+                <div class="class-section">
+                    <h4 style="color: #3498db; background: #f8f9fa; padding: 10px; border-radius: 8px;">
+                        🎒 الفصل ${cls} - ${classStudents.length} طالب
+                    </h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+            `;
+            
+            const list = students[cls] || [];
+            list.forEach(student => {
+                const participated = classStudents.includes(student.name);
+                const answer = (day.qaResponses && day.qaResponses[cls] && day.qaResponses[cls][student.name]) 
+                    ? day.qaResponses[cls][student.name] 
+                    : '-';
+                
+                html += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">
+                        <div>
+                            <span style="color: ${participated ? '#27ae60' : '#e74c3c'}; font-weight: bold;">
+                                ${participated ? '✅' : '❌'}
+                            </span>
+                            ${student.name}
+                        </div>
+                        <div style="color: #666; font-size: 0.9rem;">
+                            ${participated ? `الإجابة: ${answer}` : 'لم يشارك'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div></div>`;
+        }
+    });
+    
+    const w = window.open('', '_blank', 'width=500,height=600');
+    w.document.write(`
+        <html dir="rtl">
+            <head>
+                <meta charset="utf-8">
+                <title>تفاصيل اليوم - ${day.date}</title>
+                <style>
+                    body { 
+                        font-family: 'Cairo', Arial; 
+                        margin: 20px; 
+                        background: #f8f9fa;
+                        line-height: 1.6;
+                    }
+                    .class-section {
+                        background: white;
+                        padding: 15px;
+                        border-radius: 10px;
+                        margin: 15px 0;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                    }
+                    h4 {
+                        margin: 0 0 10px 0;
+                    }
+                </style>
+            </head>
+            <body>
+                ${html}
+                <button onclick="window.close()" style="margin-top: 20px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;">إغلاق</button>
+            </body>
+        </html>
+    `);
+        }

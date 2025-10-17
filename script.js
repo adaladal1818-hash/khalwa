@@ -147,43 +147,100 @@ function setMediaType(type, event) {
     }
 }
 
-// تهيئة الكاميرا
+// تهيئة الكاميرا - معدلة للكاميرا الخلفية
 function initCamera() {
     const cameraPreview = document.getElementById('cameraPreview');
     if (!cameraPreview) return;
     
-    cameraPreview.innerHTML = '<div class="media-status info">جاري تشغيل الكاميرا...</div>';
+    cameraPreview.innerHTML = '<div class="media-status info">جاري تشغيل الكاميرا الخلفية...</div>';
     
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
+        // إعدادات للكاميرا الخلفية
+        const constraints = {
+            video: {
+                facingMode: { exact: "environment" }, // الكاميرا الخلفية
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            }
+        };
+        
+        // محاولة استخدام الكاميرا الخلفية أولاً
+        navigator.mediaDevices.getUserMedia(constraints)
             .then(stream => {
                 cameraPreview.innerHTML = `
-                    <video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px;"></video>
+                    <video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px; transform: scaleX(-1);"></video>
                     <button type="button" class="capture-btn" onclick="captureImage()">📸</button>
                 `;
                 const video = document.getElementById('cameraVideo');
                 video.srcObject = stream;
             })
             .catch(err => {
-                console.error('خطأ في الكاميرا:', err);
-                cameraPreview.innerHTML = '<div class="media-status error">❌ لا يمكن الوصول للكاميرا. تأكد من الصلاحيات.</div>';
+                console.log('الكاميرا الخلفية غير متوفرة، جاري استخدام الكاميرا الأمامية:', err);
+                
+                // إذا فشلت الكاميرا الخلفية، استخدم أي كاميرا متاحة
+                navigator.mediaDevices.getUserMedia({ 
+                    video: {
+                        facingMode: "user", // الكاميرا الأمامية
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                })
+                .then(stream => {
+                    cameraPreview.innerHTML = `
+                        <video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px;"></video>
+                        <button type="button" class="capture-btn" onclick="captureImage()">📸</button>
+                        <div class="media-status info" style="margin-top:10px;">📱 يتم استخدام الكاميرا الأمامية</div>
+                    `;
+                    const video = document.getElementById('cameraVideo');
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error('خطأ في الكاميرا:', err);
+                    cameraPreview.innerHTML = `
+                        <div class="media-status error">
+                            ❌ لا يمكن الوصول للكاميرا<br>
+                            <small>تأكد من منح الإذن للكاميرا في إعدادات المتصفح</small>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <button class="btn" style="background:#3498db; color:white;" onclick="initCamera()">
+                                🔄 حاول مرة أخرى
+                            </button>
+                        </div>
+                    `;
+                });
             });
     } else {
-        cameraPreview.innerHTML = '<div class="media-status error">❌ المتصفح لا يدعم الكاميرا.</div>';
+        cameraPreview.innerHTML = `
+            <div class="media-status error">
+                ❌ المتصفح لا يدعم الكاميرا<br>
+                <small>جرب استخدام Chrome أو Firefox على الموبايل</small>
+            </div>
+        `;
     }
 }
 
-// التقاط صورة من الكاميرا
+// التقاط صورة من الكاميرا - معدلة
 function captureImage() {
     const video = document.getElementById('cameraVideo');
-    if (!video) return;
+    if (!video) {
+        alert('❌ لم يتم تحميل الكاميرا بعد');
+        return;
+    }
     
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0);
+    
+    // تعديل الاتجاه بناءً على نوع الكاميرا
+    if (video.style.transform === 'scaleX(-1)') {
+        // كاميرا خلفية - قلب الصورة أفقياً
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+    }
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     canvas.toBlob(blob => {
         const reader = new FileReader();
@@ -192,6 +249,11 @@ function captureImage() {
             document.getElementById('cameraPreview').innerHTML = `
                 <div class="media-status success">✅ تم التقاط الصورة بنجاح!</div>
                 <img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="الصورة الملتقطة">
+                <div style="margin-top:10px;">
+                    <button class="btn" style="background:#3498db; color:white;" onclick="initCamera()">
+                        📷 التقاط صورة أخرى
+                    </button>
+                </div>
             `;
             
             // إيقاف الكاميرا
@@ -202,6 +264,7 @@ function captureImage() {
         };
         reader.readAsDataURL(blob);
     }, 'image/jpeg', 0.8);
+    }
 }
 
 // معالجة الرفع

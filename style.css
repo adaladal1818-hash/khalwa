@@ -542,3 +542,147 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
 .hidden {
     display: none !important;
    }
+/* ============================================
+   تنسيقات الكاميرا المحسنة
+   ============================================ */
+
+/* تنسيقات معاينة الكاميرا */
+.camera-container {
+    position: relative;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 10px 0;
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #34495e;
+}
+
+.camera-preview {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+.capture-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 70px;
+    height: 70px;
+    font-size: 1.8rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.capture-btn:hover {
+    background: #c0392b;
+    transform: translateX(-50%) scale(1.1);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.capture-btn:active {
+    transform: translateX(-50%) scale(0.95);
+}
+
+/* تحكم الكاميرا */
+.camera-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.camera-switch-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.camera-switch-btn:hover {
+    background: #2980b9;
+    transform: scale(1.1);
+}
+
+.camera-quality {
+    text-align: center;
+    margin: 10px 0;
+    font-size: 0.9rem;
+    color: #666;
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+/* حالات الكاميرا */
+.camera-active {
+    border: 3px solid #2ecc71;
+    box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+}
+
+.camera-error {
+    border: 3px solid #e74c3c;
+    background: #fdf2f2;
+}
+
+.camera-loading {
+    border: 3px solid #f39c12;
+    background: #fef9e7;
+}
+
+/* تحسينات للعرض على الموبايل */
+@media (max-width: 768px) {
+    .camera-container {
+        min-height: 300px;
+        margin: 15px 0;
+    }
+    
+    .capture-btn {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+        bottom: 25px;
+    }
+    
+    .camera-controls {
+        gap: 15px;
+        margin-top: 20px;
+    }
+    
+    .camera-switch-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 1.4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .camera-container {
+        min-height: 250px;
+        border-radius: 10px;
+    }
+    
+    .capture-btn {
+        width: 70px;
+        height: 70px;
+        font-size: 

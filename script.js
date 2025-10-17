@@ -603,3 +603,196 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('textInput').style.display = 'block';
     }
 });
+// ============================================
+// دوال الوسائط المتعددة المكملة
+// ============================================
+
+// تهيئة الكاميرا - معدلة للكاميرا الخلفية
+function initCamera() {
+    const cameraPreview = document.getElementById('cameraPreview');
+    if (!cameraPreview) return;
+    
+    cameraPreview.innerHTML = '<div class="media-status info">جاري تشغيل الكاميرا الخلفية...</div>';
+    
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        // محاولة استخدام الكاميرا الخلفية أولاً
+        const constraints = {
+            video: {
+                facingMode: { exact: "environment" }, // الكاميرا الخلفية
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+        
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(stream => {
+                cameraPreview.innerHTML = `
+                    <video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px; transform: scaleX(-1);"></video>
+                    <button type="button" class="capture-btn" onclick="captureImage()">📸 التقاط صورة</button>
+                `;
+                const video = document.getElementById('cameraVideo');
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.log('الكاميرا الخلفية غير متوفرة، جاري استخدام الكاميرا الأمامية:', err);
+                
+                // إذا فشلت الكاميرا الخلفية، استخدم أي كاميرا متاحة
+                navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    cameraPreview.innerHTML = `
+                        <video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px;"></video>
+                        <button type="button" class="capture-btn" onclick="captureImage()">📸 التقاط صورة</button>
+                        <div class="media-status info" style="margin-top:10px;">📱 يتم استخدام الكاميرا الأمامية</div>
+                    `;
+                    const video = document.getElementById('cameraVideo');
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error('خطأ في الكاميرا:', err);
+                    cameraPreview.innerHTML = `
+                        <div class="media-status error">
+                            ❌ لا يمكن الوصول للكاميرا<br>
+                            <small>تأكد من منح الإذن للكاميرا في إعدادات المتصفح</small>
+                        </div>
+                        <div style="margin-top:10px;">
+                            <button class="btn" style="background:#3498db; color:white;" onclick="initCamera()">
+                                🔄 حاول مرة أخرى
+                            </button>
+                        </div>
+                    `;
+                });
+            });
+    } else {
+        cameraPreview.innerHTML = `
+            <div class="media-status error">
+                ❌ المتصفح لا يدعم الكاميرا<br>
+                <small>جرب استخدام Chrome أو Firefox على الموبايل</small>
+            </div>
+        `;
+    }
+}
+
+// التقاط صورة من الكاميرا
+function captureImage() {
+    const video = document.getElementById('cameraVideo');
+    if (!video) {
+        alert('❌ لم يتم تحميل الكاميرا بعد');
+        return;
+    }
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // تعديل الاتجاه بناءً على نوع الكاميرا
+    if (video.style.transform === 'scaleX(-1)') {
+        // كاميرا خلفية - قلب الصورة أفقياً
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+    }
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(blob => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            document.getElementById('kholwaText').value = `![صورة من الكاميرا](${e.target.result})`;
+            document.getElementById('cameraPreview').innerHTML = `
+                <div class="media-status success">✅ تم التقاط الصورة بنجاح!</div>
+                <img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="الصورة الملتقطة">
+                <div style="margin-top:10px;">
+                    <button class="btn" style="background:#3498db; color:white;" onclick="initCamera()">
+                        📷 التقاط صورة أخرى
+                    </button>
+                </div>
+            `;
+            
+            // إيقاف الكاميرا
+            const stream = video.srcObject;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+        reader.readAsDataURL(blob);
+    }, 'image/jpeg', 0.8);
+}
+
+// معالجة رفع الملفات
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = function (e) {
+        if (currentMediaType === 'image') {
+            document.getElementById('kholwaText').value = `![${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع الصورة بنجاح!</div>
+                <img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="${file.name}">
+            `;
+        } else if (currentMediaType === 'pdf') {
+            document.getElementById('kholwaText').value = `[📎 ${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع ملف PDF بنجاح!</div>
+                <div class="file-info">
+                    <div class="file-icon">📄</div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                </div>
+            `;
+        } else if (currentMediaType === 'word') {
+            document.getElementById('kholwaText').value = `[📋 ${file.name}](${e.target.result})`;
+            document.getElementById('fileInput').innerHTML += `
+                <div class="media-status success">✅ تم رفع ملف Word بنجاح!</div>
+                <div class="file-info">
+                    <div class="file-icon">📋</div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    </div>
+                </div>
+            `;
+        }
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// معالجة النسخ واللصق
+function handlePaste(event) {
+    event.preventDefault();
+    const pastedText = event.clipboardData.getData('text');
+    document.getElementById('pasteContent').value = pastedText;
+    document.getElementById('kholwaText').value = pastedText;
+    
+    // إضافة رسالة نجاح
+    const successMsg = document.createElement('div');
+    successMsg.className = 'media-status success';
+    successMsg.textContent = '✅ تم لصق النص بنجاح!';
+    document.getElementById('pasteInput').appendChild(successMsg);
+    
+    // إزالة الرسالة بعد 3 ثواني
+    setTimeout(() => {
+        if (successMsg.parentNode) {
+            successMsg.remove();
+        }
+    }, 3000);
+}
+
+// دالة مساعدة للحصول على اسم نوع الوسائط
+function getMediaTypeName(type) {
+    const names = {
+        'text': 'نص',
+        'paste': 'نص منسوخ',
+        'camera': 'صورة كاميرا',
+        'image': 'صورة',
+        'pdf': 'PDF',
+        'word': 'Word'
+    };
+    return names[type] || type;
+}

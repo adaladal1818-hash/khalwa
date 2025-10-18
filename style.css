@@ -757,3 +757,26 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
         font-size: 1.5rem;
     }
    }
+.kholwa-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin: 15px 0;
+    border: 2px solid #e0e0e0;
+}
+
+.kholwa-content {
+    line-height: 1.8;
+    font-size: 1.1rem;
+    color: #2c3e50;
+    text-align: right;
+    white-space: pre-line;
+}
+
+.kholwa-body {
+    padding: 15px 0;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    margin: 15px 0;
+}

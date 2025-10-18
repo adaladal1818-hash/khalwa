@@ -352,6 +352,20 @@ function addStudents() {
 // نظام الطفل
 // ============================================
 
+function enterKholwa() {
+    const name = document.getElementById('childName').value.trim();
+    const cls = document.getElementById('childClass').value;
+    if (!name) return alert('ادخل الاسم');
+    const students = LS.get('students') || {};
+    let list = students[cls] || [];
+    if (!list.find(s => s.name === name)) {
+        list.push({ name: name, answeredDates: [] });
+        students[cls] = list;
+        LS.set('students', students);
+    }
+    showKholwaFor(name, cls);
+}
+
 async function showKholwaFor(name, cls) {
     const shared = await fetchShared();
     const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
@@ -366,55 +380,7 @@ async function showKholwaFor(name, cls) {
         document.getElementById('kholwaContent').innerHTML = '<p class="note">الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️</p>';
         return;
     }
-function checkAnswer(selectedIndex, studentName, studentClass) {
-    const shared = LS.get('kholwa');
-    if (!shared || !shared.question) return;
-    
-    const isCorrect = selectedIndex === shared.question.correctIndex;
-    const resultArea = document.getElementById('resultArea');
-    
-    if (isCorrect) {
-        resultArea.innerHTML = '<div style="color: #27ae60; font-weight: bold; text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; margin: 10px 0;">✅ إجابة صحيحة! أحسنت!</div>';
-        
-        // منح نقاط للطالب
-        awardPoints(studentName, studentClass, 10);
-    } else {
-        resultArea.innerHTML = '<div style="color: #e74c3c; font-weight: bold; text-align: center; padding: 15px; background: #f8d7da; border-radius: 8px; margin: 10px 0;">❌ إجابة خاطئة، حاول مرة أخرى!</div>';
-    }
-    
-    // تعطيل الأزرار بعد الإجابة
-    document.querySelectorAll('.option-btn').forEach(btn => {
-        btn.disabled = true;
-        btn.style.background = '#f8f9fa';
-        btn.style.cursor = 'not-allowed';
-    });
-}
 
-function awardPoints(studentName, studentClass, points) {
-    const studentPoints = LS.get('studentPoints') || {};
-    const key = `${studentClass}_${studentName}`;
-    
-    studentPoints[key] = (studentPoints[key] || 0) + points;
-    LS.set('studentPoints', studentPoints);
-    
-    // تحديث سجل الإجابات
-    const history = LS.get('history') || [];
-    if (history.length > 0) {
-        const today = history[history.length - 1];
-        if (today.answers && today.answers[studentClass]) {
-            if (!today.answers[studentClass].includes(studentName)) {
-                today.answers[studentClass].push(studentName);
-            }
-        }
-        if (today.qaResponses && today.qaResponses[studentClass]) {
-            today.qaResponses[studentClass][studentName] = points;
-        }
-        LS.set('history', history);
-    }
-    
-    // إشعار بنقاط جديدة
-    addNotification('نقاط جديدة!', `كسب ${studentName} ${points} نقطة`, 'success');
-}
     enter.style.display = 'none';
     view.style.display = 'block';
     
@@ -474,6 +440,56 @@ function awardPoints(studentName, studentClass, points) {
     }
     
     resultArea.innerHTML = '';
+}
+
+function checkAnswer(selectedIndex, studentName, studentClass) {
+    const shared = LS.get('kholwa');
+    if (!shared || !shared.question) return;
+    
+    const isCorrect = selectedIndex === shared.question.correctIndex;
+    const resultArea = document.getElementById('resultArea');
+    
+    if (isCorrect) {
+        resultArea.innerHTML = '<div style="color: #27ae60; font-weight: bold; text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; margin: 10px 0;">✅ إجابة صحيحة! أحسنت!</div>';
+        
+        // منح نقاط للطالب
+        awardPoints(studentName, studentClass, 10);
+    } else {
+        resultArea.innerHTML = '<div style="color: #e74c3c; font-weight: bold; text-align: center; padding: 15px; background: #f8d7da; border-radius: 8px; margin: 10px 0;">❌ إجابة خاطئة، حاول مرة أخرى!</div>';
+    }
+    
+    // تعطيل الأزرار بعد الإجابة
+    document.querySelectorAll('.option-btn').forEach(btn => {
+        btn.disabled = true;
+        btn.style.background = '#f8f9fa';
+        btn.style.cursor = 'not-allowed';
+    });
+}
+
+function awardPoints(studentName, studentClass, points) {
+    const studentPoints = LS.get('studentPoints') || {};
+    const key = `${studentClass}_${studentName}`;
+    
+    studentPoints[key] = (studentPoints[key] || 0) + points;
+    LS.set('studentPoints', studentPoints);
+    
+    // تحديث سجل الإجابات
+    const history = LS.get('history') || [];
+    if (history.length > 0) {
+        const today = history[history.length - 1];
+        if (today.answers && today.answers[studentClass]) {
+            if (!today.answers[studentClass].includes(studentName)) {
+                today.answers[studentClass].push(studentName);
+            }
+        }
+        if (today.qaResponses && today.qaResponses[studentClass]) {
+            today.qaResponses[studentClass][studentName] = points;
+        }
+        LS.set('history', history);
+    }
+    
+    // إشعار بنقاط جديدة
+    addNotification('نقاط جديدة!', `كسب ${studentName} ${points} نقطة`, 'success');
 }
 
 // ============================================
@@ -674,20 +690,6 @@ function loadTeacherStatus(cls) {
 }
 
 // ============================================
-// التهيئة النهائية
-// ============================================
-
-document.addEventListener('DOMContentLoaded', function () {
-    initializeData();
-    updateNotifications();
-    console.log('تم تحميل البرنامج بنجاح!');
-    
-    // تفعيل النص كافتراضي إذا كان المستخدم مسؤول
-    if (document.getElementById('textInput')) {
-        document.getElementById('textInput').style.display = 'block';
-    }
-});
-// ============================================
 // دوال الوسائط المتعددة المكملة
 // ============================================
 
@@ -808,10 +810,17 @@ function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // التحقق من نوع الملف
+    if (currentMediaType === 'image' && !file.type.startsWith('image/')) {
+        alert('❌ يرجى اختيار ملف صورة فقط');
+        return;
+    }
+    
     const reader = new FileReader();
     
     reader.onload = function (e) {
         if (currentMediaType === 'image') {
+            // حفظ رابط الصورة بشكل صحيح
             document.getElementById('kholwaText').value = `![${file.name}](${e.target.result})`;
             document.getElementById('fileInput').innerHTML += `
                 <div class="media-status success">✅ تم رفع الصورة بنجاح!</div>
@@ -880,6 +889,7 @@ function getMediaTypeName(type) {
     };
     return names[type] || type;
 }
+
 // ============================================
 // دوال التقارير والإحصائيات
 // ============================================
@@ -1246,4 +1256,19 @@ function showDayDetails(index) {
             </body>
         </html>
     `);
-        }
+}
+
+// ============================================
+// التهيئة النهائية
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function () {
+    initializeData();
+    updateNotifications();
+    console.log('تم تحميل البرنامج بنجاح!');
+    
+    // تفعيل النص كافتراضي إذا كان المستخدم مسؤول
+    if (document.getElementById('textInput')) {
+        document.getElementById('textInput').style.display = 'block';
+    }
+});

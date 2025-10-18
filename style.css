@@ -96,226 +96,7 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
 
 /* تحسينات للجوال */
 @media (max-width:480px){.app{padding:10px}.btn{padding:10px}.card{padding:10px}.title{font-size:1.2rem}}
-/* ============================================
-   تنسيقات الوسائط المتعددة الجديدة
-   ============================================ */
 
-/* تنسيقات أزرار أنواع الوسائط */
-.media-type-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin: 10px 0;
-}
-
-.media-type-btn {
-    padding: 12px 8px;
-    border: none;
-    border-radius: 10px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 0.9rem;
-}
-
-.media-type-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.media-type-btn:active {
-    transform: scale(0.95);
-}
-
-/* تنسيقات معاينة الكاميرا */
-.camera-container {
-    position: relative;
-    background: #000;
-    border-radius: 12px;
-    overflow: hidden;
-    margin: 10px 0;
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.camera-preview {
-    width: 100%;
-    max-width: 100%;
-    border-radius: 8px;
-}
-
-.capture-btn {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    transition: all 0.3s ease;
-}
-
-.capture-btn:hover {
-    background: #c0392b;
-    transform: translateX(-50%) scale(1.1);
-}
-
-/* منطقة رفع الملفات */
-.file-upload-area {
-    border: 2px dashed #3498db;
-    border-radius: 12px;
-    padding: 25px;
-    text-align: center;
-    background: #f8f9fa;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    margin: 10px 0;
-}
-
-.file-upload-area:hover {
-    background: #e3f2fd;
-    border-color: #2980b9;
-    transform: translateY(-2px);
-}
-
-.file-upload-area.dragover {
-    background: #d4edda;
-    border-color: #28a745;
-}
-
-/* تنسيقات منطقة النسخ واللصق */
-.paste-area {
-    border: 2px solid #9b59b6;
-    border-radius: 12px;
-    padding: 15px;
-    background: #f8f9fa;
-    margin: 10px 0;
-}
-
-.paste-area:focus-within {
-    border-color: #8e44ad;
-    background: #f3e5f5;
-}
-
-/* تنسيقات المعاينة */
-.media-preview {
-    max-width: 100%;
-    border-radius: 12px;
-    margin: 15px 0;
-    border: 3px solid #e0e0e0;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.media-preview img {
-    border-radius: 10px;
-}
-
-/* رسائل الحالة */
-.media-status {
-    padding: 10px;
-    border-radius: 8px;
-    margin: 10px 0;
-    text-align: center;
-    font-weight: 700;
-}
-
-.media-status.success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.media-status.error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.media-status.info {
-    background: #cce7ff;
-    color: #004085;
-    border: 1px solid #b3d7ff;
-}
-
-/* تحسينات للجوال */
-@media (max-width: 480px) {
-    .media-type-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .media-type-btn {
-        padding: 15px 10px;
-        font-size: 1rem;
-    }
-    
-    .camera-container {
-        min-height: 150px;
-    }
-    
-    .capture-btn {
-        width: 50px;
-        height: 50px;
-        font-size: 1.2rem;
-    }
-    
-    .file-upload-area {
-        padding: 20px 15px;
-    }
-}
-
-/* تأثيرات بصرية */
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.media-type-btn.pulse {
-    animation: pulse 2s infinite;
-}
-
-/* تنسيقات الملفات */
-.file-info {
-    background: #e9ecef;
-    padding: 10px;
-    border-radius: 8px;
-    margin: 10px 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.file-icon {
-    font-size: 1.5rem;
-}
-
-.file-details {
-    flex: 1;
-}
-
-.file-name {
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-
-.file-size {
-    color: #666;
-    font-size: 0.8rem;
-}
-
-/* تنسيقات الوسائط النشطة */
-.media-input-active {
-    border-left: 4px solid #3498db;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                }
 /* ============================================
    تنسيقات الوسائط المتعددة الجديدة
    ============================================ */
@@ -541,7 +322,8 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
 /* إخفاء العناصر */
 .hidden {
     display: none !important;
-   }
+}
+
 /* ============================================
    تنسيقات الكاميرا المحسنة
    ============================================ */
@@ -685,7 +467,10 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
     .capture-btn {
         width: 70px;
         height: 70px;
-        font-size: 
+        font-size: 1.8rem;
+    }
+}
+
 /* تنسيقات التقارير والإحصائيات */
 .stats-grid {
     display: grid;
@@ -756,7 +541,12 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
     .stat-number {
         font-size: 1.5rem;
     }
-   }
+}
+
+/* ============================================
+   تنسيقات الخلوة المحسنة
+   ============================================ */
+
 .kholwa-card {
     background: white;
     padding: 20px;
@@ -780,3 +570,72 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
     border-bottom: 1px solid #eee;
     margin: 15px 0;
 }
+
+/* تنسيقات الأسئلة والإجابات */
+.question-container {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    margin: 20px 0;
+    border-left: 4px solid #3498db;
+}
+
+.answer-option {
+    display: block;
+    width: 100%;
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid #3498db;
+    background: white;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.answer-option:hover {
+    background: #3498db;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.answer-option:disabled {
+    background: #f8f9fa;
+    color: #666;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.answer-option.correct {
+    background: #27ae60;
+    color: white;
+    border-color: #27ae60;
+}
+
+.answer-option.incorrect {
+    background: #e74c3c;
+    color: white;
+    border-color: #e74c3c;
+}
+
+.result-message {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.result-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.result-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+   }

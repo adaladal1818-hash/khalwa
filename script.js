@@ -352,20 +352,6 @@ function addStudents() {
 // نظام الطفل
 // ============================================
 
-function enterKholwa() {
-    const name = document.getElementById('childName').value.trim();
-    const cls = document.getElementById('childClass').value;
-    if (!name) return alert('ادخل الاسم');
-    const students = LS.get('students') || {};
-    let list = students[cls] || [];
-    if (!list.find(s => s.name === name)) {
-        list.push({ name: name, answeredDates: [] });
-        students[cls] = list;
-        LS.set('students', students);
-    }
-    showKholwaFor(name, cls);
-}
-
 async function showKholwaFor(name, cls) {
     const shared = await fetchShared();
     const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
@@ -383,13 +369,63 @@ async function showKholwaFor(name, cls) {
 
     enter.style.display = 'none';
     view.style.display = 'block';
+    
+    // معالجة المحتوى بشكل صحيح
+    let contentHTML = '';
+    
+    if (kh.type === 'text') {
+        // معالجة النص العادي وتحويل الأسطر الجديدة إلى <br>
+        contentHTML = `<div class="kholwa-content">${kh.content.replace(/\n/g, '<br>')}</div>`;
+    } else if (kh.type === 'image') {
+        // استخراج رابط الصورة من النص
+        const imageMatch = kh.content.match(/!\[.*?\]\((.*?)\)/);
+        if (imageMatch && imageMatch[1]) {
+            contentHTML = `<img src="${imageMatch[1]}" alt="صورة الخلوة" style="max-width:100%; border-radius:8px; margin:10px 0;">`;
+        } else {
+            contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
+        }
+    } else {
+        contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
+    }
+
+    // بناء واجهة الخلوة كاملة
     document.getElementById('kholwaContent').innerHTML = `
-        <div class="note">
-            <h3>${kh.title || 'خلوة اليوم'}</h3>
-            <p>${kh.content || ''}</p>
-            ${kh.question ? `<p><strong>سؤال:</strong> ${kh.question.text}</p>` : ''}
+        <div class="kholwa-card">
+            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 15px;">${kh.title || 'خلوة اليوم'}</h3>
+            <div class="kholwa-body">
+                ${contentHTML}
+            </div>
         </div>
     `;
+
+    // إضافة السؤال إذا موجود
+    const questionArea = document.getElementById('questionArea');
+    const choicesArea = document.getElementById('choicesArea');
+    const resultArea = document.getElementById('resultArea');
+    
+    if (kh.question && kh.question.text) {
+        questionArea.innerHTML = `<h4 style="color: #e74c3c; margin-top: 20px;">سؤال اليوم:</h4><p>${kh.question.text}</p>`;
+        
+        // إضافة خيارات الإجابة
+        let choicesHTML = '<div style="margin-top: 15px;">';
+        kh.question.options.forEach((option, index) => {
+            if (option && option.trim() !== '') {
+                choicesHTML += `
+                    <button class="option-btn" onclick="checkAnswer(${index}, '${name}', '${cls}')" 
+                            style="display: block; width: 100%; margin: 8px 0; padding: 12px; border-radius: 8px; border: 2px solid #3498db; background: white; cursor: pointer;">
+                        ${option}
+                    </button>
+                `;
+            }
+        });
+        choicesHTML += '</div>';
+        choicesArea.innerHTML = choicesHTML;
+    } else {
+        questionArea.innerHTML = '';
+        choicesArea.innerHTML = '';
+    }
+    
+    resultArea.innerHTML = '';
 }
 
 // ============================================

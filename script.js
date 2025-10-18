@@ -366,7 +366,55 @@ async function showKholwaFor(name, cls) {
         document.getElementById('kholwaContent').innerHTML = '<p class="note">الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️</p>';
         return;
     }
+function checkAnswer(selectedIndex, studentName, studentClass) {
+    const shared = LS.get('kholwa');
+    if (!shared || !shared.question) return;
+    
+    const isCorrect = selectedIndex === shared.question.correctIndex;
+    const resultArea = document.getElementById('resultArea');
+    
+    if (isCorrect) {
+        resultArea.innerHTML = '<div style="color: #27ae60; font-weight: bold; text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; margin: 10px 0;">✅ إجابة صحيحة! أحسنت!</div>';
+        
+        // منح نقاط للطالب
+        awardPoints(studentName, studentClass, 10);
+    } else {
+        resultArea.innerHTML = '<div style="color: #e74c3c; font-weight: bold; text-align: center; padding: 15px; background: #f8d7da; border-radius: 8px; margin: 10px 0;">❌ إجابة خاطئة، حاول مرة أخرى!</div>';
+    }
+    
+    // تعطيل الأزرار بعد الإجابة
+    document.querySelectorAll('.option-btn').forEach(btn => {
+        btn.disabled = true;
+        btn.style.background = '#f8f9fa';
+        btn.style.cursor = 'not-allowed';
+    });
+}
 
+function awardPoints(studentName, studentClass, points) {
+    const studentPoints = LS.get('studentPoints') || {};
+    const key = `${studentClass}_${studentName}`;
+    
+    studentPoints[key] = (studentPoints[key] || 0) + points;
+    LS.set('studentPoints', studentPoints);
+    
+    // تحديث سجل الإجابات
+    const history = LS.get('history') || [];
+    if (history.length > 0) {
+        const today = history[history.length - 1];
+        if (today.answers && today.answers[studentClass]) {
+            if (!today.answers[studentClass].includes(studentName)) {
+                today.answers[studentClass].push(studentName);
+            }
+        }
+        if (today.qaResponses && today.qaResponses[studentClass]) {
+            today.qaResponses[studentClass][studentName] = points;
+        }
+        LS.set('history', history);
+    }
+    
+    // إشعار بنقاط جديدة
+    addNotification('نقاط جديدة!', `كسب ${studentName} ${points} نقطة`, 'success');
+}
     enter.style.display = 'none';
     view.style.display = 'block';
     

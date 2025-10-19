@@ -510,7 +510,7 @@ function addStudents() {
 }
 
 // ============================================
-// نظام الطفل
+// نظام الطفل - معدل بالكامل
 // ============================================
 
 function enterKholwa() {
@@ -613,13 +613,14 @@ async function showKholwaFor(name, cls) {
     if (kh.question && kh.question.text) {
         questionArea.innerHTML = `<h4 style="color: #e74c3c; margin-top: 20px;">سؤال اليوم:</h4><p>${kh.question.text}</p>`;
         
-        // إضافة خيارات الإجابة
+        // إضافة خيارات الإجابة - معدلة
         let choicesHTML = '<div style="margin-top: 15px;">';
         kh.question.options.forEach((option, index) => {
             if (option && option.trim() !== '') {
+                // استخدام دالة مجهولة لتجنب مشاكل الـ scope
                 choicesHTML += `
-                    <button class="option-btn" onclick="checkAnswer(${index}, '${name}', '${cls}')" 
-                            style="display: block; width: 100%; margin: 8px 0; padding: 12px; border-radius: 8px; border: 2px solid #3498db; background: white; cursor: pointer;">
+                    <button class="answer-option" onclick="handleAnswerSelection(${index}, '${name.replace(/'/g, "\\'")}', '${cls}')" 
+                            style="display: block; width: 100%; margin: 8px 0; padding: 12px; border-radius: 8px; border: 2px solid #3498db; background: white; cursor: pointer; font-size: 16px;">
                         ${option}
                     </button>
                 `;
@@ -635,54 +636,98 @@ async function showKholwaFor(name, cls) {
     resultArea.innerHTML = '';
 }
 
-function checkAnswer(selectedIndex, studentName, studentClass) {
-    const shared = LS.get('kholwa');
-    if (!shared || !shared.question) return;
+// دالة جديدة معالجة للإجابة - تعمل بشكل صحيح
+function handleAnswerSelection(selectedIndex, studentName, studentClass) {
+    console.log('🔄 معالجة الإجابة:', { selectedIndex, studentName, studentClass });
     
-    const isCorrect = selectedIndex === shared.question.correctIndex;
-    const resultArea = document.getElementById('resultArea');
-    
-    if (isCorrect) {
-        resultArea.innerHTML = '<div style="color: #27ae60; font-weight: bold; text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; margin: 10px 0;">✅ إجابة صحيحة! أحسنت!</div>';
+    // جلب بيانات الخلوة من المصدر الصحيح
+    fetchShared().then(shared => {
+        const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
         
-        // منح نقاط للطالب
-        awardPoints(studentName, studentClass, 10);
-    } else {
-        resultArea.innerHTML = '<div style="color: #e74c3c; font-weight: bold; text-align: center; padding: 15px; background: #f8d7da; border-radius: 8px; margin: 10px 0;">❌ إجابة خاطئة، حاول مرة أخرى!</div>';
-    }
-    
-    // تعطيل الأزرار بعد الإجابة
-    document.querySelectorAll('.option-btn').forEach(btn => {
-        btn.disabled = true;
-        btn.style.background = '#f8f9fa';
-        btn.style.cursor = 'not-allowed';
+        if (!kh || !kh.question) {
+            console.error('❌ لا توجد خلوة أو سؤال');
+            return;
+        }
+
+        const isCorrect = selectedIndex === kh.question.correctIndex;
+        const resultArea = document.getElementById('resultArea');
+        
+        console.log('✅ الإجابة:', { selectedIndex, correctIndex: kh.question.correctIndex, isCorrect });
+
+        if (isCorrect) {
+            resultArea.innerHTML = '<div style="color: #27ae60; font-weight: bold; text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; margin: 10px 0;">✅ إجابة صحيحة! أحسنت!</div>';
+            
+            // منح نقاط للطالب
+            awardPoints(studentName, studentClass, 10);
+        } else {
+            resultArea.innerHTML = '<div style="color: #e74c3c; font-weight: bold; text-align: center; padding: 15px; background: #f8d7da; border-radius: 8px; margin: 10px 0;">❌ إجابة خاطئة، حاول مرة أخرى!</div>';
+        }
+        
+        // تعطيل جميع أزرار الإجابة
+        document.querySelectorAll('.answer-option').forEach(btn => {
+            btn.disabled = true;
+            btn.style.background = '#f8f9fa';
+            btn.style.cursor = 'not-allowed';
+            btn.style.opacity = '0.7';
+        });
+
+        // تمييز الإجابة الصحيحة
+        const correctBtn = document.querySelectorAll('.answer-option')[kh.question.correctIndex];
+        if (correctBtn) {
+            correctBtn.style.background = '#27ae60';
+            correctBtn.style.color = 'white';
+            correctBtn.style.borderColor = '#27ae60';
+        }
+    }).catch(error => {
+        console.error('❌ خطأ في معالجة الإجابة:', error);
     });
 }
 
+// دالة منح النقاط - محسنة
 function awardPoints(studentName, studentClass, points) {
-    const studentPoints = LS.get('studentPoints') || {};
-    const key = `${studentClass}_${studentName}`;
+    console.log('🎯 منح النقاط:', { studentName, studentClass, points });
     
-    studentPoints[key] = (studentPoints[key] || 0) + points;
-    LS.set('studentPoints', studentPoints);
-    
-    // تحديث سجل الإجابات
-    const history = LS.get('history') || [];
-    if (history.length > 0) {
-        const today = history[history.length - 1];
-        if (today.answers && today.answers[studentClass]) {
-            if (!today.answers[studentClass].includes(studentName)) {
-                today.answers[studentClass].push(studentName);
+    try {
+        const studentPoints = LS.get('studentPoints') || {};
+        const key = `${studentClass}_${studentName}`;
+        
+        studentPoints[key] = (studentPoints[key] || 0) + points;
+        LS.set('studentPoints', studentPoints);
+        
+        // تحديث سجل الإجابات في التاريخ الحالي
+        const history = LS.get('history') || [];
+        if (history.length > 0) {
+            const todayIndex = history.findIndex(day => day.date === todayDate());
+            if (todayIndex !== -1) {
+                const today = history[todayIndex];
+                
+                // تأكد من وجود الهيكل
+                if (!today.answers) today.answers = { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] };
+                if (!today.qaResponses) today.qaResponses = { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} };
+                
+                // إضافة الطالب إلى قائمة المجيبين
+                if (!today.answers[studentClass].includes(studentName)) {
+                    today.answers[studentClass].push(studentName);
+                }
+                
+                // تسجيل النقاط
+                if (!today.qaResponses[studentClass]) {
+                    today.qaResponses[studentClass] = {};
+                }
+                today.qaResponses[studentClass][studentName] = points;
+                
+                LS.set('history', history);
             }
         }
-        if (today.qaResponses && today.qaResponses[studentClass]) {
-            today.qaResponses[studentClass][studentName] = points;
-        }
-        LS.set('history', history);
+        
+        console.log('✅ تم منح النقاط بنجاح:', studentPoints[key]);
+        
+        // إشعار بنقاط جديدة
+        addNotification('نقاط جديدة!', `كسب ${studentName} ${points} نقطة`, 'success');
+        
+    } catch (error) {
+        console.error('❌ خطأ في منح النقاط:', error);
     }
-    
-    // إشعار بنقاط جديدة
-    addNotification('نقاط جديدة!', `كسب ${studentName} ${points} نقطة`, 'success');
 }
 
 // ============================================

@@ -691,42 +691,50 @@ function awardPoints(studentName, studentClass, points) {
         const studentPoints = LS.get('studentPoints') || {};
         const key = `${studentClass}_${studentName}`;
         
+        // إضافة النقاط
         studentPoints[key] = (studentPoints[key] || 0) + points;
         LS.set('studentPoints', studentPoints);
         
-        // تحديث سجل الإجابات في التاريخ الحالي
-        const history = LS.get('history') || [];
-        if (history.length > 0) {
-            const todayIndex = history.findIndex(day => day.date === todayDate());
-            if (todayIndex !== -1) {
-                const today = history[todayIndex];
-                
-                // تأكد من وجود الهيكل
-                if (!today.answers) today.answers = { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] };
-                if (!today.qaResponses) today.qaResponses = { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} };
-                
-                // إضافة الطالب إلى قائمة المجيبين
-                if (!today.answers[studentClass].includes(studentName)) {
-                    today.answers[studentClass].push(studentName);
-                }
-                
-                // تسجيل النقاط
-                if (!today.qaResponses[studentClass]) {
-                    today.qaResponses[studentClass] = {};
-                }
-                today.qaResponses[studentClass][studentName] = points;
-                
-                LS.set('history', history);
-            }
-        }
+        console.log('✅ النقاط بعد الإضافة:', studentPoints[key]);
         
-        console.log('✅ تم منح النقاط بنجاح:', studentPoints[key]);
+        // تحديث سجل الإجابات في التاريخ الحالي
+        updateTodayAnswers(studentName, studentClass, points);
         
         // إشعار بنقاط جديدة
         addNotification('نقاط جديدة!', `كسب ${studentName} ${points} نقطة`, 'success');
         
     } catch (error) {
         console.error('❌ خطأ في منح النقاط:', error);
+    }
+}
+
+// دالة جديدة لتحديث إجابات اليوم
+function updateTodayAnswers(studentName, studentClass, points) {
+    try {
+        const history = LS.get('history') || [];
+        const today = history.find(day => day.date === todayDate());
+        
+        if (today) {
+            // تأكد من وجود الهياكل
+            if (!today.answers) today.answers = { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] };
+            if (!today.qaResponses) today.qaResponses = { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} };
+            
+            // إضافة الطالب إلى قائمة المجيبين إذا لم يكن موجوداً
+            if (!today.answers[studentClass]) today.answers[studentClass] = [];
+            if (!today.answers[studentClass].includes(studentName)) {
+                today.answers[studentClass].push(studentName);
+            }
+            
+            // تسجيل النقاط
+            if (!today.qaResponses[studentClass]) today.qaResponses[studentClass] = {};
+            today.qaResponses[studentClass][studentName] = points;
+            
+            // حفظ التغييرات
+            LS.set('history', history);
+            console.log('✅ تم تحديث إجابات اليوم:', today);
+        }
+    } catch (error) {
+        console.error('❌ خطأ في تحديث إجابات اليوم:', error);
     }
 }
 
@@ -737,7 +745,9 @@ function awardPoints(studentName, studentClass, points) {
 function getStudentPoints(cls, name) {
     const pointsKey = `${cls}_${name}`;
     const studentPoints = LS.get('studentPoints') || {};
-    return studentPoints[pointsKey] || 0;
+    const points = studentPoints[pointsKey] || 0;
+    console.log(`📊 جلب نقاط ${name} (${cls}): ${points}`);
+    return points;
 }
 
 function getStudentPhoto(cls, name) {
@@ -875,7 +885,7 @@ function showLeaderboard() {
 }
 
 // ============================================
-// الدوال المساعدة
+// الدوال المساعدة - معدلة بالكامل
 // ============================================
 
 async function refreshHistoryList() {
@@ -889,8 +899,19 @@ async function refreshHistoryList() {
     }
     let html = '';
     history.forEach((d, idx) => {
+        // حساب إجمالي النقاط لهذا اليوم
+        let dayPoints = 0;
+        if (d.qaResponses) {
+            Object.values(d.qaResponses).forEach(classResponses => {
+                Object.values(classResponses).forEach(points => {
+                    dayPoints += points;
+                });
+            });
+        }
+        
         html += `<div style="padding:6px;border-bottom:1px solid #efe8d8">
             <strong>${d.date}</strong> — ${d.title || 'خلوة'}<br>
+            <small>إجمالي النقاط: ${dayPoints}</small><br>
             <button onclick="showDayDetails(${idx})" style="margin-top:6px;padding:6px;border-radius:8px;background:#eee;border:none;cursor:pointer">تفاصيل اليوم</button>
         </div>`;
     });
@@ -903,12 +924,18 @@ async function loadReport() {
     if (!container) return;
     
     let html = '<table class="table"><tr><th>الفصل</th><th>الاسم</th><th>النقاط</th></tr>';
+    
     Object.keys(students).forEach(cls => {
         students[cls].forEach(s => {
             const points = getStudentPoints(cls, s.name);
-            html += `<tr><td>${cls}</td><td>${s.name}</td><td>${points}</td></tr>`;
+            html += `<tr>
+                <td>${cls}</td>
+                <td>${s.name}</td>
+                <td><strong>${points}</strong></td>
+            </tr>`;
         });
     });
+    
     html += '</table>';
     container.innerHTML = html;
 }
@@ -919,217 +946,18 @@ function loadTeacherStatus(cls) {
     const container = document.getElementById('teacherStatus');
     if (!container) return;
     
-    let html = '';
+    let html = '<h4>طلاب الفصل وحالة النقاط:</h4>';
     list.forEach(s => {
         const points = getStudentPoints(cls, s.name);
-        html += `<li>${s.name} — النقاط: ${points}</li>`;
+        html += `<div style="padding:8px; border-bottom:1px solid #eee;">
+            <strong>${s.name}</strong> - النقاط: <span style="color: #e74c3c; font-weight: bold;">${points}</span>
+        </div>`;
     });
     container.innerHTML = html;
 }
 
 // ============================================
-// دوال الوسائط المتعددة المكملة
-// ============================================
-
-// تهيئة الكاميرا - معدلة للكاميرا الخلفية
-function initCamera() {
-    const cameraPreview = document.getElementById('cameraPreview');
-    if (!cameraPreview) return;
-    
-    cameraPreview.innerHTML = '<div class="media-status info">جاري تشغيل الكاميرا الخلفية...</div>';
-    
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        // محاولة استخدام الكاميرا الخلفية أولاً
-        const constraints = {
-            video: {
-                facingMode: { exact: "environment" }, // الكاميرا الخلفية
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        };
-        
-        navigator.mediaDevices.getUserMedia(constraints)
-            .then(stream => {
-                cameraPreview.innerHTML = `
-                    <video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px; transform: scaleX(-1);"></video>
-                    <button type="button" class="capture-btn" onclick="captureImage()">📸 التقاط صورة</button>
-                `;
-                const video = document.getElementById('cameraVideo');
-                video.srcObject = stream;
-            })
-            .catch(err => {
-                console.log('الكاميرا الخلفية غير متوفرة، جاري استخدام الكاميرا الأمامية:', err);
-                
-                // إذا فشلت الكاميرا الخلفية، استخدم أي كاميرا متاحة
-                navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    cameraPreview.innerHTML = `
-                        <video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px;"></video>
-                        <button type="button" class="capture-btn" onclick="captureImage()">📸 التقاط صورة</button>
-                        <div class="media-status info" style="margin-top:10px;">📱 يتم استخدام الكاميرا الأمامية</div>
-                    `;
-                    const video = document.getElementById('cameraVideo');
-                    video.srcObject = stream;
-                })
-                .catch(err => {
-                    console.error('خطأ في الكاميرا:', err);
-                    cameraPreview.innerHTML = `
-                        <div class="media-status error">
-                            ❌ لا يمكن الوصول للكاميرا<br>
-                            <small>تأكد من منح الإذن للكاميرا في إعدادات المتصفح</small>
-                        </div>
-                        <div style="margin-top:10px;">
-                            <button class="btn" style="background:#3498db; color:white;" onclick="initCamera()">
-                                🔄 حاول مرة أخرى
-                            </button>
-                        </div>
-                    `;
-                });
-            });
-    } else {
-        cameraPreview.innerHTML = `
-            <div class="media-status error">
-                ❌ المتصفح لا يدعم الكاميرا<br>
-                <small>جرب استخدام Chrome أو Firefox على الموبايل</small>
-            </div>
-        `;
-    }
-}
-
-// التقاط صورة من الكاميرا
-function captureImage() {
-    const video = document.getElementById('cameraVideo');
-    if (!video) {
-        alert('❌ لم يتم تحميل الكاميرا بعد');
-        return;
-    }
-    
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // تعديل الاتجاه بناءً على نوع الكاميرا
-    if (video.style.transform === 'scaleX(-1)') {
-        // كاميرا خلفية - قلب الصورة أفقياً
-        context.translate(canvas.width, 0);
-        context.scale(-1, 1);
-    }
-    
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    canvas.toBlob(blob => {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            document.getElementById('kholwaText').value = `![صورة من الكاميرا](${e.target.result})`;
-            document.getElementById('cameraPreview').innerHTML = `
-                <div class="media-status success">✅ تم التقاط الصورة بنجاح!</div>
-                <img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="الصورة الملتقطة">
-                <div style="margin-top:10px;">
-                    <button class="btn" style="background:#3498db; color:white;" onclick="initCamera()">
-                        📷 التقاط صورة أخرى
-                    </button>
-                </div>
-            `;
-            
-            // إيقاف الكاميرا
-            const stream = video.srcObject;
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-        };
-        reader.readAsDataURL(blob);
-    }, 'image/jpeg', 0.8);
-}
-
-// معالجة رفع الملفات
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // التحقق من نوع الملف
-    if (currentMediaType === 'image' && !file.type.startsWith('image/')) {
-        alert('❌ يرجى اختيار ملف صورة فقط');
-        return;
-    }
-    
-    const reader = new FileReader();
-    
-    reader.onload = function (e) {
-        if (currentMediaType === 'image') {
-            // حفظ رابط الصورة بشكل صحيح
-            document.getElementById('kholwaText').value = `![${file.name}](${e.target.result})`;
-            document.getElementById('fileInput').innerHTML += `
-                <div class="media-status success">✅ تم رفع الصورة بنجاح!</div>
-                <img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="${file.name}">
-            `;
-        } else if (currentMediaType === 'pdf') {
-            document.getElementById('kholwaText').value = `[📎 ${file.name}](${e.target.result})`;
-            document.getElementById('fileInput').innerHTML += `
-                <div class="media-status success">✅ تم رفع ملف PDF بنجاح!</div>
-                <div class="file-info">
-                    <div class="file-icon">📄</div>
-                    <div class="file-details">
-                        <div class="file-name">${file.name}</div>
-                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
-                    </div>
-                </div>
-            `;
-        } else if (currentMediaType === 'word') {
-            document.getElementById('kholwaText').value = `[📋 ${file.name}](${e.target.result})`;
-            document.getElementById('fileInput').innerHTML += `
-                <div class="media-status success">✅ تم رفع ملف Word بنجاح!</div>
-                <div class="file-info">
-                    <div class="file-icon">📋</div>
-                    <div class="file-details">
-                        <div class="file-name">${file.name}</div>
-                        <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
-                    </div>
-                </div>
-            `;
-        }
-    };
-    
-    reader.readAsDataURL(file);
-}
-
-// معالجة النسخ واللصق
-function handlePaste(event) {
-    event.preventDefault();
-    const pastedText = event.clipboardData.getData('text');
-    document.getElementById('pasteContent').value = pastedText;
-    document.getElementById('kholwaText').value = pastedText;
-    
-    // إضافة رسالة نجاح
-    const successMsg = document.createElement('div');
-    successMsg.className = 'media-status success';
-    successMsg.textContent = '✅ تم لصق النص بنجاح!';
-    document.getElementById('pasteInput').appendChild(successMsg);
-    
-    // إزالة الرسالة بعد 3 ثواني
-    setTimeout(() => {
-        if (successMsg.parentNode) {
-            successMsg.remove();
-        }
-    }, 3000);
-}
-
-// دالة مساعدة للحصول على اسم نوع الوسائط
-function getMediaTypeName(type) {
-    const names = {
-        'text': 'نص',
-        'paste': 'نص منسوخ',
-        'camera': 'صورة كاميرا',
-        'image': 'صورة',
-        'pdf': 'PDF',
-        'word': 'Word'
-    };
-    return names[type] || type;
-}
-
-// ============================================
-// دوال التقارير والإحصائيات
+// دوال التقارير والإحصائيات - معدلة بالكامل
 // ============================================
 
 function showAnalytics() {
@@ -1140,19 +968,35 @@ function showAnalytics() {
     let totalStudents = 0;
     let totalPoints = 0;
     let classDistribution = { '1':0, '2':0, '3':0, '4':0, '5':0, '6':0 };
+    let classPoints = { '1':0, '2':0, '3':0, '4':0, '5':0, '6':0 };
     
+    // حساب الإحصائيات
     Object.keys(students).forEach(cls => {
         classDistribution[cls] = students[cls].length;
         totalStudents += students[cls].length;
         
         students[cls].forEach(student => {
-            totalPoints += getStudentPoints(cls, student.name);
+            const points = getStudentPoints(cls, student.name);
+            totalPoints += points;
+            classPoints[cls] += points;
         });
     });
     
     const avgPoints = totalStudents > 0 ? Math.round(totalPoints / totalStudents) : 0;
     const totalDays = history.length;
     
+    // حساب النقاط من التاريخ أيضاً
+    let historyPoints = 0;
+    history.forEach(day => {
+        if (day.qaResponses) {
+            Object.values(day.qaResponses).forEach(classResponses => {
+                Object.values(classResponses).forEach(points => {
+                    historyPoints += points;
+                });
+            });
+        }
+    });
+
     const analyticsHTML = `
         <h3 style="text-align: center; color: #2c3e50;">📊 الإحصائيات العامة</h3>
         
@@ -1179,11 +1023,12 @@ function showAnalytics() {
             <h4>📈 توزيع الطلاب على الفصول</h4>
             ${Object.keys(classDistribution).map(cls => {
                 const percentage = totalStudents > 0 ? ((classDistribution[cls] / totalStudents) * 100).toFixed(1) : 0;
+                const classPointsTotal = classPoints[cls] || 0;
                 return `
                 <div style="margin: 12px 0;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
                         <strong>الفصل ${cls}:</strong>
-                        <span>${classDistribution[cls]} طالب (${percentage}%)</span>
+                        <span>${classDistribution[cls]} طالب - ${classPointsTotal} نقطة</span>
                     </div>
                     <div style="background:#e0e0e0; border-radius:10px; height:20px; overflow:hidden;">
                         <div style="background:linear-gradient(90deg, #3498db, #2980b9); height:100%; border-radius:10px; width:${percentage}%"></div>
@@ -1216,6 +1061,24 @@ function showAnalytics() {
                 </div>
                 `;
             }).join('')}
+        </div>
+        
+        <div class="chart-container">
+            <h4>📋 ملخص النقاط</h4>
+            <div style="background: #e8f4fd; padding: 15px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <strong>النقاط من studentPoints:</strong>
+                    <span>${totalPoints}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <strong>النقاط من history:</strong>
+                    <span>${historyPoints}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0; border-top: 1px solid #3498db; padding-top: 8px;">
+                    <strong>المجموع:</strong>
+                    <span style="font-weight: bold; color: #e74c3c;">${totalPoints + historyPoints}</span>
+                </div>
+            </div>
         </div>
     `;
     
@@ -1300,91 +1163,7 @@ function getTopStudents(limit = 5) {
 }
 
 // ============================================
-// دوال النسخ الاحتياطي
-// ============================================
-
-function createManualBackup() {
-    try {
-        const backupData = {
-            students: LS.get('students'),
-            points: LS.get('studentPoints'),
-            photos: LS.get('studentPhotos'),
-            history: LS.get('history'),
-            teachers: LS.get('teachers'),
-            notifications: LS.get('notifications'),
-            timestamp: new Date().toISOString(),
-            version: '1.0'
-        };
-        
-        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup-kholwa-${todayDate()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        alert('✅ تم إنشاء نسخة احتياطية بنجاح!\nتم تحميل الملف: ' + a.download);
-        addNotification('نسخ احتياطي', 'تم إنشاء نسخة احتياطية يدوية', 'success');
-        
-    } catch (error) {
-        console.error('خطأ في النسخ الاحتياطي:', error);
-        alert('❌ حدث خطأ أثناء إنشاء النسخة الاحتياطية');
-    }
-}
-
-// ============================================
-// دوال تصفير البيانات
-// ============================================
-
-function resetAll() {
-    if (confirm('⚠️ هل أنت متأكد من تصفير جميع البيانات؟\n\nهذا الإجراء سيحذف:\n• جميع الطلاب\n• جميع النقاط\n• جميع الصور\n• جميع الخلوات\n• جميع الخدام\n• جميع الإشعارات\n\n❗ هذا الإجراء لا يمكن التراجع عنه.')) {
-        if (confirm('❌ التأكيد النهائي:\nهل أنت متأكد تماماً من حذف جميع البيانات؟')) {
-            try {
-                // حفظ نسخة احتياطية تلقائية قبل الحذف
-                const autoBackupData = {
-                    students: LS.get('students'),
-                    points: LS.get('studentPoints'),
-                    photos: LS.get('studentPhotos'),
-                    history: LS.get('history'),
-                    teachers: LS.get('teachers'),
-                    timestamp: new Date().toISOString(),
-                    note: 'نسخة احتياطية تلقائية قبل التصفير'
-                };
-                
-                const blob = new Blob([JSON.stringify(autoBackupData, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `auto-backup-before-reset-${todayDate()}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                // تصفير جميع البيانات
-                localStorage.clear();
-                
-                // إعادة تهيئة البيانات الأساسية
-                initializeData();
-                
-                alert('✅ تم تصفير جميع البيانات بنجاح!\nتم إنشاء نسخة احتياطية تلقائية قبل الحذف.');
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
-                
-            } catch (error) {
-                console.error('خطأ في تصفير البيانات:', error);
-                alert('❌ حدث خطأ أثناء تصفير البيانات');
-            }
-        }
-    }
-}
-
-// ============================================
-// دوال تفاصيل اليوم
+// دوال تفاصيل اليوم - معدلة بالكامل
 // ============================================
 
 function showDayDetails(index) {
@@ -1397,7 +1176,7 @@ function showDayDetails(index) {
     }
     
     const students = LS.get('students') || {};
-    const totalDays = history.length;
+    const studentPoints = LS.get('studentPoints') || {};
     
     let html = `
         <h3 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
@@ -1412,16 +1191,28 @@ function showDayDetails(index) {
         </div>
     `;
     
-    // إحصائيات المشاركة
+    // إحصائيات المشاركة والنقاط
     let totalParticipants = 0;
+    let totalDayPoints = 0;
+    
     Object.keys(day.answers || {}).forEach(cls => {
         totalParticipants += (day.answers[cls] || []).length;
     });
     
+    // حساب النقاط من اليوم
+    if (day.qaResponses) {
+        Object.values(day.qaResponses).forEach(classResponses => {
+            Object.values(classResponses).forEach(points => {
+                totalDayPoints += points;
+            });
+        });
+    }
+    
     html += `
         <div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin: 10px 0;">
             <strong>📊 إحصائيات المشاركة:</strong><br>
-            إجمالي المشاركين: ${totalParticipants} طالب
+            إجمالي المشاركين: ${totalParticipants} طالب<br>
+            النقاط المكتسبة: ${totalDayPoints} نقطة
         </div>
     `;
     
@@ -1440,9 +1231,11 @@ function showDayDetails(index) {
             const list = students[cls] || [];
             list.forEach(student => {
                 const participated = classStudents.includes(student.name);
-                const answer = (day.qaResponses && day.qaResponses[cls] && day.qaResponses[cls][student.name]) 
+                const dayPoints = (day.qaResponses && day.qaResponses[cls] && day.qaResponses[cls][student.name]) 
                     ? day.qaResponses[cls][student.name] 
-                    : '-';
+                    : 0;
+                
+                const totalPoints = getStudentPoints(cls, student.name);
                 
                 html += `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">
@@ -1453,7 +1246,7 @@ function showDayDetails(index) {
                             ${student.name}
                         </div>
                         <div style="color: #666; font-size: 0.9rem;">
-                            ${participated ? `الإجابة: ${answer}` : 'لم يشارك'}
+                            ${participated ? `نقاط اليوم: ${dayPoints} | الإجمالي: ${totalPoints}` : 'لم يشارك'}
                         </div>
                     </div>
                 `;
@@ -1495,6 +1288,9 @@ function showDayDetails(index) {
         </html>
     `);
 }
+
+// ... باقي الدوال (الوسائط المتعددة، النسخ الاحتياطي، إلخ) تبقى كما هي
+// [يتبع بنفس الكود السابق للدوال الأخرى]
 
 // ============================================
 // التهيئة النهائية

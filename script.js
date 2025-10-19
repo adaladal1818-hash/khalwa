@@ -5,12 +5,34 @@
 const SHARED = 'data.json';
 
 async function fetchShared() {
+    // بيانات احتياطية من التخزين المحلي
+    const fallbackData = { 
+        kholwa: LS.get('kholwa'), 
+        history: LS.get('history') || [],
+        source: 'local'
+    };
+    
     try {
-        const r = await fetch(SHARED + '?_=' + Date.now());
-        if (!r.ok) throw new Error('Network error');
-        return await r.json();
-    } catch (e) {
-        return null;
+        console.log('🔄 جاري جلب البيانات من السيرفر...');
+        
+        // إضافة طابع زمني لمنع التخزين المؤقت
+        const response = await fetch(SHARED + '?t=' + Date.now());
+        
+        if (!response.ok) {
+            throw new Error(`خطأ في السيرفر: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ تم جلب البيانات من السيرفر بنجاح');
+        console.log('📅 آخر خلوة:', data.kholwa?.date);
+        
+        return { ...data, source: 'server' };
+        
+    } catch (error) {
+        console.log('❌ لا يمكن الاتصال بالسيرفر:', error.message);
+        console.log('🔄 استخدام البيانات المحلية كاحتياطي');
+        
+        return fallbackData;
     }
 }
 
@@ -227,11 +249,15 @@ function publishKholwa() {
     const qCorrect = parseInt(document.getElementById('qCorrect').value);
 
     if (!start || !end) {
-        alert('حدد البداية والنهاية');
+        alert('❌ حدد وقت البداية والنهاية');
         return;
     }
     if (new Date(start) >= new Date(end)) {
-        alert('تأكد من أن البداية قبل النهاية');
+        alert('❌ تأكد من أن البداية قبل النهاية');
+        return;
+    }
+    if (!text && currentMediaType === 'text') {
+        alert('❌ اكتب محتوى الخلوة');
         return;
     }
 
@@ -242,9 +268,14 @@ function publishKholwa() {
         endISO: new Date(end).toISOString(),
         type: currentMediaType,
         content: text,
-        question: { text: qText, options: [q1, q2, q3], correctIndex: qCorrect }
+        question: { 
+            text: qText, 
+            options: [q1, q2, q3].filter(opt => opt.trim() !== ''), 
+            correctIndex: qCorrect 
+        }
     };
 
+    // حفظ محلي للمسؤول
     LS.set('kholwa', obj);
     const history = LS.get('history') || [];
     const day = {
@@ -258,18 +289,148 @@ function publishKholwa() {
     history.push(day);
     LS.set('history', history);
 
-    const shared = { kholwa: obj, history: history };
-    const blob = new Blob([JSON.stringify(shared, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'data.json';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    // إنشاء ملف data.json للمشاركة
+    const sharedData = { 
+        kholwa: obj, 
+        history: history,
+        lastUpdated: new Date().toISOString(),
+        totalStudents: countTotalStudents(),
+        message: `خلوة ${obj.date} - ${obj.title}`
+    };
 
-    alert('تم نشر الخلوة ✅ حمل ملف data.json وارفعه على الاستضافة (نفس المجلد)');
+    // تحميل الملف تلقائياً
+    downloadSharedFile(sharedData);
+    
+    // إشعار بنجاح النشر
+    addNotification('نشر خلوة', `تم نشر "${obj.title}" بنجاح`, 'success');
+}
+
+// دالة حساب إجمالي الطلاب
+function countTotalStudents() {
+    const students = LS.get('students') || {};
+    let total = 0;
+    Object.values(students).forEach(classStudents => {
+        total += classStudents.length;
+    });
+    return total;
+}
+
+// دالة تحميل ملف المشاركة - محسنة لمنع التكرار
+function downloadSharedFile(data) {
+    try {
+        // إضافة طابع زمني فريد لمنع التكرار
+        const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const time = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+        const uniqueId = `${timestamp}_${time}`;
+        
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json; charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // اسم ملف موحد مع معرف فريد
+        a.download = `data.json`;
+        a.style.display = 'none';
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        URL.revokeObjectURL(url);
+        
+        // رسالة توضيحية مع اسم الملف
+        showUploadInstructions(uniqueId);
+        
+        console.log(`📁 تم إنشاء ملف: data.json (ID: ${uniqueId})`);
+        
+    } catch (error) {
+        console.error('خطأ في إنشاء الملف:', error);
+        alert('❌ حدث خطأ في إنشاء الملف');
+    }
+}
+
+// عرض تعليمات الرفع - محسنة
+function showUploadInstructions(fileId = '') {
+    const instructions = `
+🎯 **تم إنشاء ملف data.json بنجاح!**
+
+📁 **الخطوات المطلوبة:**
+
+1. **حمّل الملف** الذي تم تحميله تلقائياً
+2. **اذهب إلى GitHub:** 
+   - افتح ملف data.json الحالي
+   - انقر "Edit" (✏️)
+3. **استبدل المحتوى:**
+   - احذف كل المحتوى القديم
+   - الصق محتوى الملف الجديد
+4. **انقر "Commit changes"**
+
+🆔 **معرف الملف:** ${fileId}
+
+✅ **بعد الحفظ:** سيتحدّث التطبيق تلقائياً خلال دقيقة
+
+⚠️ **مهم:** لا ترفع ملف جديد، استبدل المحتوى فقط!
+    `;
+    
+    const instructionHTML = `
+        <div style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        ">
+            <div style="
+                background: white;
+                padding: 25px;
+                border-radius: 15px;
+                max-width: 500px;
+                margin: 20px;
+                max-height: 80vh;
+                overflow-y: auto;
+                text-align: right;
+                direction: rtl;
+            ">
+                <h3 style="color: #27ae60; text-align: center; margin-bottom: 20px;">
+                    ✅ تم نشر الخلوة
+                </h3>
+                <div style="
+                    background: #f8f9fa;
+                    padding: 15px;
+                    border-radius: 10px;
+                    border-right: 4px solid #3498db;
+                    white-space: pre-line;
+                    line-height: 1.6;
+                    font-size: 14px;
+                ">
+                    ${instructions}
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="this.parentElement.parentElement.parentElement.remove()" 
+                            style="
+                                background: #3498db;
+                                color: white;
+                                border: none;
+                                padding: 12px 30px;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-weight: bold;
+                                font-size: 16px;
+                            ">
+                        فهمت 👍
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', instructionHTML);
 }
 
 function closeNow() {
@@ -374,13 +535,45 @@ async function showKholwaFor(name, cls) {
 
     if (!enter || !view) return;
 
-    if (!kh || kh.date !== todayDate() || new Date() < new Date(kh.startISO) || new Date() > new Date(kh.endISO)) {
+    // تصحيح شرط التحقق من الخلوة النشطة
+    if (!kh) {
         enter.style.display = 'none';
         view.style.display = 'block';
-        document.getElementById('kholwaContent').innerHTML = '<p class="note">الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️</p>';
+        document.getElementById('kholwaContent').innerHTML = '<p class="note">لا توجد خلوة نشطة حالياً</p>';
         return;
     }
 
+    const now = new Date();
+    const start = new Date(kh.startISO);
+    const end = new Date(kh.endISO);
+    const isToday = kh.date === todayDate();
+
+    console.log('فحص الخلوة:', {
+        now: now.toLocaleString('ar-EG'),
+        start: start.toLocaleString('ar-EG'),
+        end: end.toLocaleString('ar-EG'),
+        isToday: isToday,
+        isActive: now >= start && now <= end && isToday
+    });
+
+    if (!isToday || now < start || now > end) {
+        enter.style.display = 'none';
+        view.style.display = 'block';
+        
+        let message = 'الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️';
+        if (!isToday) {
+            message = 'لا توجد خلوة لليوم الحالي';
+        } else if (now < start) {
+            message = `الخلوة ستبدأ في: ${start.toLocaleString('ar-EG')}`;
+        } else if (now > end) {
+            message = 'انتهت فترة الخلوة لهذا اليوم';
+        }
+        
+        document.getElementById('kholwaContent').innerHTML = `<p class="note">${message}</p>`;
+        return;
+    }
+
+    // إذا وصلنا هنا، الخلوة نشطة
     enter.style.display = 'none';
     view.style.display = 'block';
     

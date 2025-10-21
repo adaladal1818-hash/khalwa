@@ -1458,3 +1458,32 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('جميع الدوال جاهزة للاستخدام!');
 });
+// نسخة مبسطة للتأكد من العمل
+function showEnhancedKholwaFor(name, cls) {
+    console.log('فتح الخلوة للطفل:', name, 'الفصل:', cls);
+    
+    const enter = document.getElementById('childEntry');
+    const view = document.getElementById('kholwaView');
+    
+    if (!enter || !view) {
+        alert('❌ عناصر العرض غير موجودة');
+        return;
+    }
+    
+    // إخفاء شاشة الدخول وإظهار شاشة الخلوة
+    enter.style.display = 'none';
+    view.style.display = 'block';
+    
+    // عرض رسالة نجاح
+    document.getElementById('kholwaContent').innerHTML = `
+        <div style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">🎉</div>
+            <h3 style="color: #27ae60;">مرحباً ${name}!</h3>
+            <p class="note">لقد دخلت بنجاح إلى الخلوة</p>
+            <p class="note">الفصل: ${cls}</p>
+            <button onclick="goHome()" class="btn" style="background: #3498db; color: white; margin-top: 20px;">
+                العودة للرئيسية
+            </button>
+        </div>
+    `;
+        }

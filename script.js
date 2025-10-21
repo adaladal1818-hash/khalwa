@@ -1200,3 +1200,209 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('جميع الدوال جاهزة للاستخدام!');
 });
+// ============================================
+// تحسينات للطفل على الموبايل
+// ============================================
+
+function optimizeForMobile() {
+    // تحسين حجم الخطوط للشاشات الصغيرة
+    if (window.innerWidth < 768) {
+        document.documentElement.style.fontSize = '14px';
+        
+        // تحسين أزرار الإدخال
+        const inputs = document.querySelectorAll('input, select, textarea, button');
+        inputs.forEach(element => {
+            element.style.fontSize = '16px'; // منع التكبير التلقائي في iOS
+        });
+    }
+}
+
+// تحسين عرض الخلوة للطفل على الموبايل
+function showKholwaFor(name, cls) {
+    const shared = LS.get('kholwa');
+    const enter = document.getElementById('childEntry');
+    const view = document.getElementById('kholwaView');
+    
+    if (!enter || !view) {
+        alert('❌ حدث خطأ في تحميل الخلوة. حاول تحديث الصفحة.');
+        return;
+    }
+
+    // إخفاء شاشة الدخول وإظهار شاشة الخلوة
+    enter.style.display = 'none';
+    view.style.display = 'block';
+
+    // إذا لم توجد خلوة
+    if (!shared) {
+        document.getElementById('kholwaContent').innerHTML = `
+            <div style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">📖</div>
+                <h3 style="color: #666;">لا توجد خلوة نشطة حالياً</h3>
+                <p class="note">انتظر حتى ينشر المسؤول الخلوة اليومية</p>
+                <button onclick="goHome()" class="btn" style="background: #3498db; color: white; margin-top: 20px;">
+                    العودة للرئيسية
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    const now = new Date();
+    const start = new Date(shared.startISO);
+    const end = new Date(shared.endISO);
+    const isToday = shared.date === todayDate();
+
+    // التحقق من توقيت الخلوة
+    if (!isToday || now < start || now > end) {
+        let message = 'الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️';
+        if (!isToday) message = 'لا توجد خلوة لليوم الحالي';
+        else if (now < start) message = `الخلوة ستبدأ في:<br>${start.toLocaleString('ar-EG')}`;
+        else if (now > end) message = 'انتهت فترة الخلوة لهذا اليوم';
+
+        document.getElementById('kholwaContent').innerHTML = `
+            <div style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">⏰</div>
+                <h3 style="color: #666;">${message}</h3>
+                <button onclick="goHome()" class="btn" style="background: #3498db; color: white; margin-top: 20px;">
+                    العودة للرئيسية
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    // عرض محتوى الخلوة
+    let contentHTML = '';
+    if (shared.type === 'text') {
+        contentHTML = `<div class="kholwa-content">${shared.content.replace(/\n/g, '<br>')}</div>`;
+    } else if (shared.type === 'image') {
+        const imageMatch = shared.content.match(/!\[.*?\]\((.*?)\)/);
+        if (imageMatch && imageMatch[1]) {
+            contentHTML = `
+                <div style="text-align: center;">
+                    <img src="${imageMatch[1]}" alt="صورة الخلوة" 
+                         style="max-width:100%; height:auto; border-radius:12px; margin:10px 0;
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                </div>
+            `;
+        } else {
+            contentHTML = `<div class="kholwa-content">${shared.content}</div>`;
+        }
+    } else {
+        contentHTML = `<div class="kholwa-content">${shared.content}</div>`;
+    }
+
+    // عرض نقاط الطفل الحالية
+    const currentPoints = getStudentPoints(cls, name);
+    const pointsDisplay = `
+        <div style="text-align: center; margin: 10px 0; padding: 15px; 
+                    background: linear-gradient(135deg, #667eea, #764ba2); 
+                    color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <div style="font-size: 1.3rem; font-weight: bold;">🎯 رصيدك الحالي</div>
+            <div style="font-size: 2rem; font-weight: 800; margin: 10px 0;">${currentPoints} نقطة</div>
+            <div style="font-size: 0.9rem; opacity: 0.9;">استمر في المشاركة لكسب المزيد!</div>
+        </div>
+    `;
+
+    document.getElementById('kholwaContent').innerHTML = `
+        ${pointsDisplay}
+        <div class="kholwa-card" style="margin: 15px 0;">
+            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px; font-size: 1.4rem;">
+                ${shared.title || 'خلوة اليوم'}
+            </h3>
+            <div class="kholwa-body">
+                ${contentHTML}
+            </div>
+        </div>
+    `;
+
+    const questionArea = document.getElementById('questionArea');
+    const choicesArea = document.getElementById('choicesArea');
+    const resultArea = document.getElementById('resultArea');
+    
+    // التحقق إذا كان الطفل قد أجاب اليوم
+    const answeredToday = LS.get('answeredToday') || {};
+    const todayKey = `${todayDate()}_${cls}_${name}`;
+    const hasAnsweredToday = answeredToday[todayKey];
+
+    if (shared.question && shared.question.text && !hasAnsweredToday) {
+        questionArea.innerHTML = `
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-right: 4px solid #e74c3c;">
+                <h4 style="color: #e74c3c; margin-bottom: 15px; text-align: center;">🧠 سؤال اليوم</h4>
+                <p style="font-size: 1.1rem; font-weight: 600; text-align: center;">${shared.question.text}</p>
+            </div>
+        `;
+        
+        let choicesHTML = '<div style="margin-top: 15px;">';
+        shared.question.options.forEach((option, index) => {
+            if (option && option.trim() !== '') {
+                choicesHTML += `
+                    <button class="answer-option" 
+                            onclick="handleAnswerSelection(${index}, '${name.replace(/'/g, "\\'")}', '${cls}')"
+                            style="display: block; width: 100%; margin: 12px 0; padding: 16px; 
+                                   border-radius: 12px; border: 2px solid #3498db; 
+                                   background: white; cursor: pointer; font-size: 16px;
+                                   font-weight: 600; transition: all 0.3s ease;">
+                        ${option}
+                    </button>
+                `;
+            }
+        });
+        choicesHTML += '</div>';
+        choicesArea.innerHTML = choicesHTML;
+    } else if (hasAnsweredToday) {
+        questionArea.innerHTML = `
+            <div style="text-align: center; padding: 30px 20px; background: #e8f4fd; 
+                        border-radius: 12px; margin: 20px 0; border: 2px solid #27ae60;">
+                <div style="font-size: 3rem; margin-bottom: 15px;">✅</div>
+                <h4 style="color: #27ae60; margin-bottom: 10px;">أحسنت!</h4>
+                <p style="color: #666; font-size: 1rem;">لقد أجبت على سؤال اليوم بالفعل</p>
+                <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">عد غداً للإجابة على سؤال جديد!</p>
+            </div>
+        `;
+        choicesArea.innerHTML = '';
+    } else {
+        questionArea.innerHTML = '';
+        choicesArea.innerHTML = '';
+    }
+    resultArea.innerHTML = '';
+}
+
+// تحديث تهيئة التطبيق لإضافة تحسينات الموبايل
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('تطبيق الخلوة تم تحميله بنجاح!');
+    
+    // تحسين للشاشات الصغيرة
+    optimizeForMobile();
+    
+    // تحديث المعلومات الرئيسية عند التحميل
+    updateMainInfo();
+    
+    // تعيين الحد الأدنى للوقت على الوقت الحالي
+    const now = new Date();
+    const startTime = document.getElementById('startTime');
+    const endTime = document.getElementById('endTime');
+    
+    if (startTime) {
+        startTime.min = now.toISOString().slice(0, 16);
+    }
+    if (endTime) {
+        endTime.min = now.toISOString().slice(0, 16);
+    }
+    
+    // إضافة حدث resize لتحسين التجاوب
+    window.addEventListener('resize', optimizeForMobile);
+    
+    // تفعيل Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(registration => {
+                console.log('Service Worker registered:', registration);
+            })
+            .catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
+    }
+    
+    console.log('جميع الدوال جاهزة للاستخدام!');
+});

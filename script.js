@@ -733,21 +733,21 @@ function sendEncouragement(classId, studentName) {
 // ============================================
 // نظام الطفل
 // ============================================
-
 function enterKholwa() {
     const name = document.getElementById('childName').value.trim();
     const cls = document.getElementById('childClass').value;
     if (!name) return alert('ادخل الاسم');
     const students = LS.get('students') || {};
     let list = students[cls] || [];
-    if (!list.find(s => s.name === n)) {
+    
+    // التصحيح هنا: تغيير 'n' إلى 'name'
+    if (!list.find(s => s.name === name)) {
         list.push({ name: name, answeredDates: [] });
         students[cls] = list;
         LS.set('students', students);
     }
     showKholwaFor(name, cls);
 }
-
 async function showKholwaFor(name, cls) {
     const shared = await fetchShared();
     const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');

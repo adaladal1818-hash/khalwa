@@ -103,7 +103,262 @@ setInterval(() => { fetchShared().then(shared => { const kh = (shared && shared.
 // ============================================
 // نظام الوسائط المتعددة
 // ============================================
+// ============================================
+// معالجة الوسائط المتعددة
+// ============================================
 
+let mediaStream = null;
+let currentCamera = 'environment';
+
+function initCamera() {
+    const cameraPreview = document.getElementById('cameraPreview');
+    if (!cameraPreview) return;
+
+    cameraPreview.innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+            <div class="loading-spinner"></div>
+            <p>جاري تحميل الكاميرا...</p>
+        </div>
+        <div class="camera-controls" style="display: none;">
+            <button type="button" class="camera-switch-btn" onclick="switchCamera()">🔄</button>
+        </div>
+        <button type="button" class="capture-btn" onclick="capturePhoto()" style="display: none;">📸</button>
+    `;
+
+    startCamera();
+}
+
+async function startCamera() {
+    try {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+        }
+
+        const constraints = {
+            video: { 
+                facingMode: currentCamera,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        };
+
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const cameraPreview = document.getElementById('cameraPreview');
+        
+        cameraPreview.innerHTML = `
+            <video class="camera-preview" autoplay playsinline></video>
+            <div class="camera-controls">
+                <button type="button" class="camera-switch-btn" onclick="switchCamera()">🔄</button>
+            </div>
+            <button type="button" class="capture-btn" onclick="capturePhoto()">📸</button>
+            <div class="camera-quality">جودة: 720p</div>
+        `;
+
+        const video = cameraPreview.querySelector('video');
+        video.srcObject = mediaStream;
+        video.classList.add('camera-active');
+
+    } catch (error) {
+        console.error('خطأ في الكاميرا:', error);
+        const cameraPreview = document.getElementById('cameraPreview');
+        cameraPreview.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #e74c3c;">
+                <div style="font-size: 3rem;">📷</div>
+                <p>تعذر الوصول إلى الكاميرا</p>
+                <small>${error.message}</small>
+            </div>
+        `;
+        cameraPreview.classList.add('camera-error');
+    }
+}
+
+function switchCamera() {
+    currentCamera = currentCamera === 'user' ? 'environment' : 'user';
+    startCamera();
+}
+
+function capturePhoto() {
+    const cameraPreview = document.getElementById('cameraPreview');
+    const video = cameraPreview.querySelector('video');
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageDataURL = canvas.toDataURL('image/jpeg', 0.8);
+    
+    // إضافة الصورة إلى محتوى الخلوة
+    document.getElementById('kholwaText').value = `![صورة الخلوة](${imageDataURL})`;
+    
+    // عرض معاينة الصورة
+    cameraPreview.innerHTML += `
+        <div style="margin-top: 15px;">
+            <p style="text-align: center; color: #27ae60; font-weight: bold;">✅ تم التقاط الصورة</p>
+            <img src="${imageDataURL}" alt="الصورة الملتقطة" style="max-width: 100%; border-radius: 8px; margin: 10px 0; border: 2px solid #27ae60;">
+        </div>
+    `;
+
+    // إيقاف الكاميرا بعد الالتقاط
+    if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+    }
+}
+
+function handlePaste(event) {
+    const pasteContent = document.getElementById('pasteContent');
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+    
+    for (let item of items) {
+        if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                pasteContent.value = `![صورة منسوخة](${e.target.result})`;
+            };
+            
+            reader.readAsDataURL(file);
+            break;
+        }
+    }
+}
+
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    const fileInput = document.getElementById('fileInput');
+    
+    reader.onload = function(e) {
+        let content = '';
+        const fileType = currentMediaType;
+        
+        if (fileType === 'image') {
+            content = `![${file.name}](${e.target.result})`;
+        } else if (fileType === 'pdf') {
+            content = `[📄 ${file.name}](${e.target.result})`;
+        } else if (fileType === 'word') {
+            content = `[📋 ${file.name}](${e.target.result})`;
+        }
+        
+        document.getElementById('kholwaText').value = content;
+        
+        // عرض معاينة الملف
+        fileInput.innerHTML = `
+            <div class="file-info">
+                <div class="file-icon">${fileType === 'image' ? '🖼️' : fileType === 'pdf' ? '📄' : '📋'}</div>
+                <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${(file.size / 1024).toFixed(2)} KB</div>
+                </div>
+            </div>
+            <div class="media-status success">
+                ✅ تم رفع الملف بنجاح
+            </div>
+            <button type="button" class="btn" onclick="setMediaType('${fileType}')" style="margin-top: 10px;">
+                رفع ملف آخر
+            </button>
+        `;
+    };
+
+    reader.onerror = function() {
+        fileInput.innerHTML += `
+            <div class="media-status error">
+                ❌ حدث خطأ في رفع الملف
+            </div>
+        `;
+    };
+
+    reader.readAsDataURL(file);
+}
+
+// ============================================
+// دوال إضافية للمسؤول
+// ============================================
+
+function refreshHistoryList() {
+    const history = LS.get('history') || [];
+    const historyList = document.getElementById('historyList');
+    
+    if (history.length === 0) {
+        historyList.innerHTML = '<p class="note">لا توجد أيام سابقة</p>';
+        return;
+    }
+
+    let html = '<div style="max-height: 200px; overflow-y: auto;">';
+    history.slice().reverse().forEach((day, index) => {
+        html += `
+            <div style="padding: 8px; margin: 5px 0; background: #f8f9fa; border-radius: 6px; border: 1px solid #ddd;">
+                <strong>${day.date}</strong>: ${day.title}
+                <button onclick="loadDayReport('${day.date}')" class="btn" style="padding: 4px 8px; margin-top: 4px; font-size: 0.8rem;">
+                    📊 تقرير
+                </button>
+            </div>
+        `;
+    });
+    html += '</div>';
+    historyList.innerHTML = html;
+}
+
+function loadReport() {
+    const reportArea = document.getElementById('reportArea');
+    const students = LS.get('students') || {};
+    let totalStudents = 0;
+    Object.values(students).forEach(cls => totalStudents += cls.length);
+    
+    const today = todayDate();
+    const history = LS.get('history') || [];
+    const todayData = history.find(day => day.date === today);
+    
+    let todayParticipants = 0;
+    if (todayData && todayData.answers) {
+        Object.values(todayData.answers).forEach(cls => todayParticipants += cls.length);
+    }
+
+    reportArea.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">${totalStudents}</div>
+                <div class="stat-label">إجمالي الطلاب</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${todayParticipants}</div>
+                <div class="stat-label">مشاركين اليوم</div>
+            </div>
+        </div>
+    `;
+}
+
+function loadDayReport(date) {
+    const history = LS.get('history') || [];
+    const day = history.find(d => d.date === date);
+    if (!day) return;
+
+    let reportHTML = `<h4>تقرير ${date}</h4>`;
+    let totalParticipants = 0;
+
+    Object.keys(day.answers || {}).forEach(cls => {
+        const participants = day.answers[cls].length;
+        totalParticipants += participants;
+        reportHTML += `<p>الفصل ${cls}: ${participants} طالب</p>`;
+    });
+
+    reportHTML += `<p><strong>المجموع: ${totalParticipants} طالب</strong></p>`;
+    
+    const reportArea = document.getElementById('reportArea');
+    reportArea.innerHTML = reportHTML;
+}
+
+function resetAll() {
+    if (confirm('⚠️ هل أنت متأكد من تصفير جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء!')) {
+        localStorage.clear();
+        initializeData();
+        alert('✅ تم تصفير جميع البيانات');
 let currentMediaType = 'text';
 
 function setMediaType(type, event) {

@@ -639,3 +639,113 @@ html,body{height:100%;margin:0;font-family:'Cairo', Arial, sans-serif;background
     color: #721c24;
     border: 1px solid #f5c6cb;
    }
+/* ============================================
+   تحسينات للجوال
+   ============================================ */
+
+@media (max-width: 768px) {
+    .app {
+        padding: 10px;
+        max-width: 100%;
+    }
+    
+    .card {
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 10px;
+    }
+    
+    .btn {
+        padding: 14px;
+        font-size: 16px;
+        margin: 8px 0;
+        border-radius: 8px;
+    }
+    
+    .input, textarea, select {
+        padding: 12px;
+        font-size: 16px;
+        margin: 8px 0;
+    }
+    
+    .title {
+        font-size: 1.3rem;
+    }
+    
+    .kholwa-card {
+        padding: 15px;
+        margin: 10px 0;
+    }
+    
+    .kholwa-content {
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+    
+    .answer-option {
+        padding: 16px;
+        font-size: 16px;
+        margin: 10px 0;
+    }
+    
+    /* منع التكبير التلقائي في حقول الإدخال على iOS */
+    input, textarea, select {
+        font-size: 16px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .app {
+        padding: 8px;
+    }
+    
+    .card {
+        padding: 12px;
+    }
+    
+    .btn {
+        padding: 12px;
+        font-size: 15px;
+    }
+    
+    .media-type-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* تحسينات للشاشات الصغيرة جداً */
+@media (max-width: 360px) {
+    .app {
+        padding: 5px;
+    }
+    
+    .title {
+        font-size: 1.1rem;
+    }
+    
+    .btn {
+        padding: 10px;
+        font-size: 14px;
+    }
+}
+
+/* تحسينات للوضع الأفقي على الموبايل */
+@media (max-height: 500px) and (orientation: landscape) {
+    .app {
+        padding: 5px;
+    }
+    
+    .card {
+        padding: 10px;
+        margin: 5px 0;
+    }
+    
+    .btn {
+        padding: 8px;
+        margin: 4px 0;
+    }
+   }

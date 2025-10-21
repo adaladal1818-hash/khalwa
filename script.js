@@ -47,7 +47,6 @@ initializeData();
 function todayDate() { return new Date().toISOString().slice(0, 10); }
 
 function showPanel(id) {
-    console.log('جاري فتح لوحة:', id);
     document.getElementById('home').style.display = 'none';
     ['admin', 'teacher', 'child'].forEach(p => {
         const element = document.getElementById(p);
@@ -58,7 +57,6 @@ function showPanel(id) {
 }
 
 function goHome() {
-    console.log('العودة للصفحة الرئيسية');
     document.getElementById('home').style.display = 'block';
     ['admin', 'teacher', 'child'].forEach(p => {
         const element = document.getElementById(p);
@@ -107,181 +105,21 @@ setInterval(() => { fetchShared().then(shared => { const kh = (shared && shared.
 // ============================================
 
 let currentMediaType = 'text';
-let mediaStream = null;
-let currentCamera = 'environment';
 
 function setMediaType(type, event) {
-    console.log('تغيير نوع الوسائط إلى:', type);
     currentMediaType = type;
     const fields = ['textInput', 'pasteInput', 'cameraInput', 'fileInput'];
-    fields.forEach(field => { 
-        const element = document.getElementById(field); 
-        if (element) element.style.display = 'none'; 
-    });
-    
-    document.querySelectorAll('.media-type-btn').forEach(btn => { 
-        btn.classList.remove('active'); 
-    });
-    
+    fields.forEach(field => { const element = document.getElementById(field); if (element) element.style.display = 'none'; });
+    document.querySelectorAll('.media-type-btn').forEach(btn => { btn.classList.remove('active'); });
     if (event && event.target) event.target.classList.add('active');
     
     switch (type) {
-        case 'text': 
-            document.getElementById('textInput').style.display = 'block'; 
-            break;
-        case 'paste': 
-            document.getElementById('pasteInput').style.display = 'block'; 
-            break;
-        case 'camera': 
-            document.getElementById('cameraInput').style.display = 'block'; 
-            initCamera(); 
-            break;
-        case 'image': 
-            document.getElementById('fileInput').style.display = 'block'; 
-            document.getElementById('fileInput').innerHTML = `
-                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
-                    <div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div>
-                    <strong>انقر لرفع صورة</strong>
-                    <p class="note">الصور المدعومة: JPG, PNG, GIF</p>
-                </div>
-                <input type="file" id="fileUpload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
-            `; 
-            break;
-        case 'pdf': 
-            document.getElementById('fileInput').style.display = 'block'; 
-            document.getElementById('fileInput').innerHTML = `
-                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
-                    <div style="font-size: 2rem; margin-bottom: 10px;">📄</div>
-                    <strong>انقر لرفع ملف PDF</strong>
-                    <p class="note">رفع ملف PDF</p>
-                </div>
-                <input type="file" id="fileUpload" class="hidden" accept=".pdf" onchange="handleFileUpload(event)">
-            `; 
-            break;
-        case 'word': 
-            document.getElementById('fileInput').style.display = 'block'; 
-            document.getElementById('fileInput').innerHTML = `
-                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
-                    <div style="font-size: 2rem; margin-bottom: 10px;">📋</div>
-                    <strong>انقر لرفع ملف Word</strong>
-                    <p class="note">رفع ملف Word</p>
-                </div>
-                <input type="file" id="fileUpload" class="hidden" accept=".doc,.docx" onchange="handleFileUpload(event)">
-            `; 
-            break;
-    }
-}
-
-function initCamera() {
-    const cameraPreview = document.getElementById('cameraPreview');
-    if (!cameraPreview) return;
-
-    cameraPreview.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-            <div class="loading-spinner"></div>
-            <p>جاري تحميل الكاميرا...</p>
-        </div>
-    `;
-
-    startCamera();
-}
-
-async function startCamera() {
-    try {
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-        }
-
-        const constraints = {
-            video: { 
-                facingMode: currentCamera,
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: false
-        };
-
-        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-        const cameraPreview = document.getElementById('cameraPreview');
-        
-        cameraPreview.innerHTML = `
-            <video class="camera-preview" autoplay playsinline></video>
-            <div class="camera-controls">
-                <button type="button" class="camera-switch-btn" onclick="switchCamera()">🔄</button>
-            </div>
-            <button type="button" class="capture-btn" onclick="capturePhoto()">📸</button>
-            <div class="camera-quality">جودة: 720p</div>
-        `;
-
-        const video = cameraPreview.querySelector('video');
-        video.srcObject = mediaStream;
-        video.classList.add('camera-active');
-
-    } catch (error) {
-        console.error('خطأ في الكاميرا:', error);
-        const cameraPreview = document.getElementById('cameraPreview');
-        cameraPreview.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: #e74c3c;">
-                <div style="font-size: 3rem;">📷</div>
-                <p>تعذر الوصول إلى الكاميرا</p>
-                <small>${error.message}</small>
-            </div>
-        `;
-        cameraPreview.classList.add('camera-error');
-    }
-}
-
-function switchCamera() {
-    currentCamera = currentCamera === 'user' ? 'environment' : 'user';
-    startCamera();
-}
-
-function capturePhoto() {
-    const cameraPreview = document.getElementById('cameraPreview');
-    const video = cameraPreview.querySelector('video');
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const imageDataURL = canvas.toDataURL('image/jpeg', 0.8);
-    
-    // إضافة الصورة إلى محتوى الخلوة
-    document.getElementById('kholwaText').value = `![صورة الخلوة](${imageDataURL})`;
-    
-    // عرض معاينة الصورة
-    cameraPreview.innerHTML += `
-        <div style="margin-top: 15px;">
-            <p style="text-align: center; color: #27ae60; font-weight: bold;">✅ تم التقاط الصورة</p>
-            <img src="${imageDataURL}" alt="الصورة الملتقطة" style="max-width: 100%; border-radius: 8px; margin: 10px 0; border: 2px solid #27ae60;">
-        </div>
-    `;
-
-    // إيقاف الكاميرا بعد الالتقاط
-    if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
-    }
-}
-
-function handlePaste(event) {
-    const pasteContent = document.getElementById('pasteContent');
-    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
-    
-    for (let item of items) {
-        if (item.type.indexOf('image') !== -1) {
-            const file = item.getAsFile();
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                pasteContent.value = `![صورة منسوخة](${e.target.result})`;
-            };
-            
-            reader.readAsDataURL(file);
-            break;
-        }
+        case 'text': document.getElementById('textInput').style.display = 'block'; break;
+        case 'paste': document.getElementById('pasteInput').style.display = 'block'; break;
+        case 'camera': document.getElementById('cameraInput').style.display = 'block'; break;
+        case 'image': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div><strong>انقر لرفع صورة</strong><p class="note">الصور المدعومة: JPG, PNG, GIF</p></div><input type="file" id="fileUpload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">`; break;
+        case 'pdf': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">📄</div><strong>انقر لرفع ملف PDF</strong><p class="note">رفع ملف PDF</p></div><input type="file" id="fileUpload" class="hidden" accept=".pdf" onchange="handleFileUpload(event)">`; break;
+        case 'word': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">📋</div><strong>انقر لرفع ملف Word</strong><p class="note">رفع ملف Word</p></div><input type="file" id="fileUpload" class="hidden" accept=".doc,.docx" onchange="handleFileUpload(event)">`; break;
     }
 }
 
@@ -306,7 +144,6 @@ function handleFileUpload(event) {
         
         document.getElementById('kholwaText').value = content;
         
-        // عرض معاينة الملف
         fileInput.innerHTML = `
             <div class="file-info">
                 <div class="file-icon">${fileType === 'image' ? '🖼️' : fileType === 'pdf' ? '📄' : '📋'}</div>
@@ -317,17 +154,6 @@ function handleFileUpload(event) {
             </div>
             <div class="media-status success">
                 ✅ تم رفع الملف بنجاح
-            </div>
-            <button type="button" class="btn" onclick="setMediaType('${fileType}')" style="margin-top: 10px;">
-                رفع ملف آخر
-            </button>
-        `;
-    };
-
-    reader.onerror = function() {
-        fileInput.innerHTML += `
-            <div class="media-status error">
-                ❌ حدث خطأ في رفع الملف
             </div>
         `;
     };
@@ -393,7 +219,6 @@ function publishKholwa() {
     history.push(day);
     LS.set('history', history);
 
-    // إعادة تعيين الإجابات اليومية
     LS.set('answeredToday', {});
 
     const sharedData = { 
@@ -416,9 +241,6 @@ function countTotalStudents() {
 
 function downloadSharedFile(data) {
     try {
-        const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const time = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
-        const uniqueId = `${timestamp}_${time}`;
         const jsonString = JSON.stringify(data, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json; charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -430,13 +252,13 @@ function downloadSharedFile(data) {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showUploadInstructions(uniqueId);
+        showUploadInstructions();
     } catch (error) {
         alert('❌ حدث خطأ في إنشاء الملف');
     }
 }
 
-function showUploadInstructions(fileId = '') {
+function showUploadInstructions() {
     const instructions = `🎯 **تم إنشاء ملف data.json بنجاح!**
 
 📁 **الخطوات المطلوبة:**
@@ -445,7 +267,6 @@ function showUploadInstructions(fileId = '') {
 3. **استبدل المحتوى:** احذف كل المحتوى القديم والصق محتوى الملف الجديد
 4. **انقر "Commit changes"**
 
-🆔 **معرف الملف:** ${fileId}
 ✅ **بعد الحفظ:** سيتحدّث التطبيق تلقائياً خلال دقيقة
 ⚠️ **مهم:** لا ترفع ملف جديد، استبدل المحتوى فقط!`;
     
@@ -500,9 +321,6 @@ function refreshHistoryList() {
         html += `
             <div style="padding: 8px; margin: 5px 0; background: #f8f9fa; border-radius: 6px; border: 1px solid #ddd;">
                 <strong>${day.date}</strong>: ${day.title}
-                <button onclick="loadDayReport('${day.date}')" class="btn" style="padding: 4px 8px; margin-top: 4px; font-size: 0.8rem;">
-                    📊 تقرير
-                </button>
             </div>
         `;
     });
@@ -539,26 +357,6 @@ function loadReport() {
     `;
 }
 
-function loadDayReport(date) {
-    const history = LS.get('history') || [];
-    const day = history.find(d => d.date === date);
-    if (!day) return;
-
-    let reportHTML = `<h4>تقرير ${date}</h4>`;
-    let totalParticipants = 0;
-
-    Object.keys(day.answers || {}).forEach(cls => {
-        const participants = day.answers[cls].length;
-        totalParticipants += participants;
-        reportHTML += `<p>الفصل ${cls}: ${participants} طالب</p>`;
-    });
-
-    reportHTML += `<p><strong>المجموع: ${totalParticipants} طالب</strong></p>`;
-    
-    const reportArea = document.getElementById('reportArea');
-    reportArea.innerHTML = reportHTML;
-}
-
 // ============================================
 // نظام الخدام
 // ============================================
@@ -573,7 +371,6 @@ function teacherLogin() {
     document.getElementById('teacherPanel').style.display = 'block';
     document.getElementById('teacherClass').innerText = found.classId;
     
-    // عرض الخلوة الحالية للخادم
     showKholwaForTeacher(found.classId);
     loadTeacherStatus(found.classId);
 }
@@ -693,9 +490,6 @@ function loadTeacherStatus(classId) {
                     <div class="progress-bar">
                         <div class="progress-fill" style="width: ${Math.min((points / 100) * 100, 100)}%"></div>
                     </div>
-                    <button class="encourage-btn" onclick="sendEncouragement('${classId}', '${student.name.replace(/'/g, "\\'")}')">
-                        💌 تشجيع
-                    </button>
                 </div>
             `;
         });
@@ -712,131 +506,162 @@ function getStudentPerformance(points) {
     return { text: 'يحتاج تحسن', class: 'performance-needs-improvement' };
 }
 
-function sendEncouragement(classId, studentName) {
-    const message = prompt(`اكتب رسالة تشجيع لـ ${studentName}:`);
-    if (message && message.trim()) {
-        const studentMessages = LS.get('studentMessages') || {};
-        const messageKey = `${classId}_${studentName}`;
-        if (!studentMessages[messageKey]) studentMessages[messageKey] = [];
-        studentMessages[messageKey].push({
-            message: message.trim(),
-            date: new Date().toLocaleString('ar-EG'),
-            type: 'encouragement'
-        });
-        LS.set('studentMessages', studentMessages);
-        
-        addNotification('رسالة تشجيع', `تم إرسال رسالة لـ ${studentName}`, 'success');
-        alert(`✅ تم إرسال رسالة التشجيع لـ ${studentName}`);
-    }
-}
-
 // ============================================
-// نظام الطفل
-// ============================================
-// ============================================
-// إصلاح مشكلة دخول الطفل - النسخة المؤكدة
+// نظام الطفل - الإصدار المؤكد
 // ============================================
 
 function enterKholwa() {
-    try {
-        // الحصول على القيم من الحقول
-        const nameInput = document.getElementById('childName');
-        const classSelect = document.getElementById('childClass');
-        
-        if (!nameInput || !classSelect) {
-            alert('❌ عناصر الإدخال غير موجودة');
-            return;
-        }
-        
-        const name = nameInput.value.trim();
-        const cls = classSelect.value;
-        
-        console.log('بيانات الدخول:', { name, cls });
-        
-        if (!name) {
-            alert('❌ الرجاء إدخال الاسم');
-            nameInput.focus();
-            return;
-        }
-        
-        // حفظ بيانات الطالب
-        const students = LS.get('students') || {};
-        if (!students[cls]) {
-            students[cls] = [];
-        }
-        
-        // التحقق من وجود الطالب وإضافته إذا لم يكن موجوداً
-        const studentExists = students[cls].some(student => student.name === name);
-        if (!studentExists) {
-            students[cls].push({ 
-                name: name, 
-                answeredDates: [],
-                joinDate: new Date().toISOString()
-            });
-            LS.set('students', students);
-            console.log('تم إضافة طالب جديد:', name);
-        }
-        
-        // الانتقال إلى شاشة الخلوة
-        showEnhancedKholwaFor(name, cls);
-        
-    } catch (error) {
-        console.error('خطأ في دخول الطفل:', error);
-        alert('❌ حدث خطأ غير متوقع. حاول مرة أخرى.');
-    }
-}
-
-// دالة مبسطة للاختبار
-function testChildEntry() {
-    console.log('=== اختبار دخول الطفل ===');
-    console.log('عنصر childName:', document.getElementById('childName'));
-    console.log('عنصر childClass:', document.getElementById('childClass'));
-    console.log('دالة enterKholwa:', typeof enterKholwa);
-    console.log('دالة showEnhancedKholwaFor:', typeof showEnhancedKholwaFor);
+    const nameInput = document.getElementById('childName');
+    const classSelect = document.getElementById('childClass');
     
-    // اختبار سريع
-    document.getElementById('childName').value = 'طفل تجريبي';
-    document.getElementById('childClass').value = '1';
-    enterKholwa();
-                }
-}
-async function showKholwaFor(name, cls) {
-    const shared = await fetchShared();
-    const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
-    const enter = document.getElementById('childEntry');
-    const view = document.getElementById('kholwaView');
-    if (!enter || !view) return;
-    if (!kh) { enter.style.display = 'none'; view.style.display = 'block'; document.getElementById('kholwaContent').innerHTML = '<p class="note">لا توجد خلوة نشطة حالياً</p>'; return; }
-
-    const now = new Date();
-    const start = new Date(kh.startISO);
-    const end = new Date(kh.endISO);
-    const isToday = kh.date === todayDate();
-
-    if (!isToday || now < start || now > end) {
-        enter.style.display = 'none'; view.style.display = 'block';
-        let message = 'الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️';
-        if (!isToday) message = 'لا توجد خلوة لليوم الحالي';
-        else if (now < start) message = `الخلوة ستبدأ في: ${start.toLocaleString('ar-EG')}`;
-        else if (now > end) message = 'انتهت فترة الخلوة لهذا اليوم';
-        document.getElementById('kholwaContent').innerHTML = `<p class="note">${message}</p>`;
+    if (!nameInput || !classSelect) {
+        alert('❌ عناصر الإدخال غير موجودة');
         return;
     }
+    
+    const name = nameInput.value.trim();
+    const cls = classSelect.value;
+    
+    if (!name) {
+        alert('❌ الرجاء إدخال الاسم');
+        nameInput.focus();
+        return;
+    }
+    
+    // حفظ بيانات الطالب
+    const students = LS.get('students') || {};
+    if (!students[cls]) {
+        students[cls] = [];
+    }
+    
+    // التحقق من وجود الطالب وإضافته إذا لم يكن موجوداً
+    const studentExists = students[cls].some(student => student.name === name);
+    if (!studentExists) {
+        students[cls].push({ 
+            name: name, 
+            answeredDates: [],
+            joinDate: new Date().toISOString()
+        });
+        LS.set('students', students);
+    }
+    
+    // الانتقال إلى شاشة الخلوة
+    showKholwaForChild(name, cls);
+}
 
-    enter.style.display = 'none'; view.style.display = 'block';
-    let contentHTML = '';
-    if (kh.type === 'text') contentHTML = `<div class="kholwa-content">${kh.content.replace(/\n/g, '<br>')}</div>`;
-    else if (kh.type === 'image') {
-        const imageMatch = kh.content.match(/!\[.*?\]\((.*?)\)/);
-        if (imageMatch && imageMatch[1]) contentHTML = `<img src="${imageMatch[1]}" alt="صورة الخلوة" style="max-width:100%; border-radius:8px; margin:10px 0;">`;
-        else contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
-    } else contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
+async function showKholwaForChild(name, cls) {
+    const enter = document.getElementById('childEntry');
+    const view = document.getElementById('kholwaView');
+    
+    if (!enter || !view) {
+        alert('❌ عناصر العرض غير موجودة');
+        return;
+    }
+    
+    // إخفاء شاشة الدخول وإظهار شاشة الخلوة
+    enter.style.display = 'none';
+    view.style.display = 'block';
+    
+    try {
+        // جلب البيانات من السيرفر
+        const shared = await fetchShared();
+        const kh = shared.kholwa;
+        
+        if (!kh) {
+            showNoKholwaMessage();
+            return;
+        }
+        
+        // التحقق من توقيت الخلوة
+        const now = new Date();
+        const start = new Date(kh.startISO);
+        const end = new Date(kh.endISO);
+        const isToday = kh.date === todayDate();
+        
+        if (!isToday || now < start || now > end) {
+            showKholwaClosedMessage(isToday, now, start, end);
+            return;
+        }
+        
+        // عرض محتوى الخلوة
+        displayKholwaContentForChild(kh, name, cls);
+        
+    } catch (error) {
+        showErrorMessage('حدث خطأ في تحميل الخلوة. حاول مرة أخرى.');
+    }
+}
 
-    // عرض نقاط الطفل الحالية
+function showNoKholwaMessage() {
+    document.getElementById('kholwaContent').innerHTML = `
+        <div style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">📖</div>
+            <h3 style="color: #666; margin-bottom: 15px;">لا توجد خلوة نشطة حالياً</h3>
+            <p class="note" style="margin-bottom: 25px;">انتظر حتى ينشر المسؤول الخلوة اليومية</p>
+            <button onclick="goHome()" class="btn" style="background: #3498db; color: white; padding: 12px 30px; border-radius: 25px;">
+                🏠 العودة للرئيسية
+            </button>
+        </div>
+    `;
+}
+
+function showKholwaClosedMessage(isToday, now, start, end) {
+    let message = 'الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️';
+    let icon = '⏰';
+    
+    if (!isToday) {
+        message = 'لا توجد خلوة لليوم الحالي';
+        icon = '📅';
+    } else if (now < start) {
+        message = `الخلوة ستبدأ في:<br><strong>${start.toLocaleString('ar-EG')}</strong>`;
+        icon = '🕒';
+    } else if (now > end) {
+        message = 'انتهت فترة الخلوة لهذا اليوم';
+        icon = '✅';
+    }
+    
+    document.getElementById('kholwaContent').innerHTML = `
+        <div style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 4rem; margin-bottom: 20px;">${icon}</div>
+            <h3 style="color: #666; margin-bottom: 15px; line-height: 1.5;">${message}</h3>
+            <button onclick="goHome()" class="btn" style="background: #3498db; color: white; padding: 12px 30px; border-radius: 25px; margin-top: 20px;">
+                🏠 العودة للرئيسية
+            </button>
+        </div>
+    `;
+}
+
+function displayKholwaContentForChild(kh, name, cls) {
+    // عرض النقاط الحالية
     const currentPoints = getStudentPoints(cls, name);
-    const pointsDisplay = `<div style="text-align: center; margin: 10px 0; padding: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 10px;">
-        <div style="font-size: 1.2rem; font-weight: bold;">🎯 رصيدك الحالي: ${currentPoints} نقطة</div>
-    </div>`;
+    const pointsDisplay = `
+        <div style="text-align: center; margin: 10px 0; padding: 15px; 
+                    background: linear-gradient(135deg, #667eea, #764ba2); 
+                    color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <div style="font-size: 1.1rem;">🎯 مرحباً ${name}</div>
+            <div style="font-size: 2rem; font-weight: 800; margin: 10px 0;">${currentPoints} نقطة</div>
+            <div style="font-size: 0.9rem;">استمر في المشاركة لكسب المزيد!</div>
+        </div>
+    `;
+
+    // عرض محتوى الخلوة
+    let contentHTML = '';
+    if (kh.type === 'text') {
+        contentHTML = `<div class="kholwa-content">${kh.content.replace(/\n/g, '<br>')}</div>`;
+    } else if (kh.type === 'image') {
+        const imageMatch = kh.content.match(/!\[.*?\]\((.*?)\)/);
+        if (imageMatch && imageMatch[1]) {
+            contentHTML = `
+                <div style="text-align: center;">
+                    <img src="${imageMatch[1]}" alt="صورة الخلوة" 
+                         style="max-width:100%; height:auto; border-radius:12px; margin:10px 0;">
+                </div>
+            `;
+        } else {
+            contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
+        }
+    } else {
+        contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
+    }
 
     document.getElementById('kholwaContent').innerHTML = `
         ${pointsDisplay}
@@ -848,6 +673,11 @@ async function showKholwaFor(name, cls) {
         </div>
     `;
 
+    // عرض السؤال إذا وجد
+    displayQuestionForChild(kh, name, cls);
+}
+
+function displayQuestionForChild(kh, name, cls) {
     const questionArea = document.getElementById('questionArea');
     const choicesArea = document.getElementById('choicesArea');
     const resultArea = document.getElementById('resultArea');
@@ -858,17 +688,39 @@ async function showKholwaFor(name, cls) {
     const hasAnsweredToday = answeredToday[todayKey];
 
     if (kh.question && kh.question.text && !hasAnsweredToday) {
-        questionArea.innerHTML = `<h4 style="color: #e74c3c; margin-top: 20px;">سؤال اليوم:</h4><p>${kh.question.text}</p>`;
+        questionArea.innerHTML = `
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-right: 4px solid #e74c3c;">
+                <h4 style="color: #e74c3c; margin-bottom: 15px; text-align: center;">🧠 سؤال اليوم</h4>
+                <p style="font-size: 1.1rem; font-weight: 600; text-align: center;">${kh.question.text}</p>
+            </div>
+        `;
+        
         let choicesHTML = '<div style="margin-top: 15px;">';
         kh.question.options.forEach((option, index) => {
             if (option && option.trim() !== '') {
-                choicesHTML += `<button class="answer-option" onclick="handleAnswerSelection(${index}, '${name.replace(/'/g, "\\'")}', '${cls}')" style="display: block; width: 100%; margin: 8px 0; padding: 12px; border-radius: 8px; border: 2px solid #3498db; background: white; cursor: pointer; font-size: 16px;">${option}</button>`;
+                choicesHTML += `
+                    <button class="answer-option" 
+                            onclick="handleAnswerSelection(${index}, '${name.replace(/'/g, "\\'")}', '${cls}')"
+                            style="display: block; width: 100%; margin: 12px 0; padding: 16px; 
+                                   border-radius: 12px; border: 2px solid #3498db; 
+                                   background: white; cursor: pointer; font-size: 16px;
+                                   font-weight: 600;">
+                        ${option}
+                    </button>
+                `;
             }
         });
         choicesHTML += '</div>';
         choicesArea.innerHTML = choicesHTML;
     } else if (hasAnsweredToday) {
-        questionArea.innerHTML = '<div style="text-align: center; padding: 20px; background: #e8f4fd; border-radius: 10px; margin: 20px 0;"><h4 style="color: #27ae60;">✅ لقد أجبت على سؤال اليوم بالفعل!</h4><p>يمكنك العودة غداً للإجابة على السؤال الجديد</p></div>';
+        questionArea.innerHTML = `
+            <div style="text-align: center; padding: 30px 20px; background: #e8f4fd; 
+                        border-radius: 12px; margin: 20px 0; border: 2px solid #27ae60;">
+                <div style="font-size: 3rem; margin-bottom: 15px;">✅</div>
+                <h4 style="color: #27ae60; margin-bottom: 10px;">أحسنت!</h4>
+                <p style="color: #666; font-size: 1rem;">لقد أجبت على سؤال اليوم بالفعل</p>
+            </div>
+        `;
         choicesArea.innerHTML = '';
     } else {
         questionArea.innerHTML = '';
@@ -882,9 +734,9 @@ function handleAnswerSelection(selectedIndex, studentName, studentClass) {
         const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
         if (!kh || !kh.question) return;
 
-        // التحقق إذا كان الطفل قد أجاب اليوم
         const answeredToday = LS.get('answeredToday') || {};
         const todayKey = `${todayDate()}_${studentClass}_${studentName}`;
+        
         if (answeredToday[todayKey]) {
             document.getElementById('resultArea').innerHTML = '<div style="color: #e67e22; font-weight: bold; text-align: center; padding: 15px; background: #fef9e7; border-radius: 8px; margin: 10px 0;">⚠️ لقد أجبت على سؤال اليوم بالفعل!</div>';
             return;
@@ -894,7 +746,6 @@ function handleAnswerSelection(selectedIndex, studentName, studentClass) {
         const resultArea = document.getElementById('resultArea');
         
         if (isCorrect) {
-            // منح النقاط فقط إذا كانت الإجابة صحيحة ولم يسبق الإجابة اليوم
             answeredToday[todayKey] = true;
             LS.set('answeredToday', answeredToday);
             
@@ -988,11 +839,6 @@ function getStudentPoints(cls, name) {
     const pointsKey = `${cls}_${name}`;
     const studentPoints = LS.get('studentPoints') || {};
     return studentPoints[pointsKey] || 0;
-}
-
-function getStudentPhoto(cls, name) {
-    const studentPhotos = LS.get('studentPhotos') || {};
-    return studentPhotos[`${cls}_${name}`] || 'https://via.placeholder.com/60/fffaf2/d9b382?text=👦';
 }
 
 // ============================================
@@ -1108,104 +954,19 @@ function showLeaderboard() {
 }
 
 // ============================================
-// دوال إضافية للمسؤول
+// دوال مساعدة
 // ============================================
 
+function showErrorMessage(message) {
+    alert(message);
+}
+
 function showAnalytics() {
-    const history = LS.get('history') || [];
-    const students = LS.get('students') || {};
-    
-    let totalStudents = 0;
-    Object.values(students).forEach(cls => totalStudents += cls.length);
-    
-    let totalParticipation = 0;
-    let totalPoints = 0;
-    const studentPoints = LS.get('studentPoints') || {};
-    Object.values(studentPoints).forEach(points => totalPoints += points);
-    
-    history.forEach(day => {
-        Object.values(day.answers || {}).forEach(participants => {
-            totalParticipation += participants.length;
-        });
-    });
-    
-    const analyticsHTML = `
-        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;">
-            <div style="background: white; padding: 25px; border-radius: 15px; max-width: 500px; margin: 20px; max-height: 80vh; overflow-y: auto; text-align: right;">
-                <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">📊 التقارير والإحصائيات</h3>
-                
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number">${totalStudents}</div>
-                        <div class="stat-label">إجمالي الطلاب</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${history.length}</div>
-                        <div class="stat-label">عدد الخلوات</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${totalParticipation}</div>
-                        <div class="stat-label">إجمالي المشاركات</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${totalPoints}</div>
-                        <div class="stat-label">إجمالي النقاط</div>
-                    </div>
-                </div>
-                
-                <div class="chart-container">
-                    <h4>📈 توزيع الطلاب على الفصول</h4>
-                    ${Object.keys(students).map(cls => `
-                        <div style="margin: 10px 0;">
-                            <div style="display: flex; justify-content: between; margin-bottom: 5px;">
-                                <span>الفصل ${cls}</span>
-                                <span>${students[cls].length} طالب</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${(students[cls].length / totalStudents) * 100}%"></div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                
-                <div style="text-align: center; margin-top: 20px;">
-                    <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: #3498db; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: bold;">
-                        إغلاق
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', analyticsHTML);
+    alert('هذه الميزة قيد التطوير');
 }
 
 function createManualBackup() {
-    const backupData = {
-        students: LS.get('students'),
-        teachers: LS.get('teachers'),
-        history: LS.get('history'),
-        studentPoints: LS.get('studentPoints'),
-        studentPhotos: LS.get('studentPhotos'),
-        notifications: LS.get('notifications'),
-        studentMessages: LS.get('studentMessages'),
-        backupDate: new Date().toISOString(),
-        version: '1.0.0'
-    };
-    
-    const dataStr = JSON.stringify(backupData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `kholwa-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    addNotification('نسخ احتياطي', 'تم إنشاء نسخة احتياطية بنجاح', 'success');
+    alert('هذه الميزة قيد التطوير');
 }
 
 function resetAll() {
@@ -1239,332 +1000,5 @@ document.addEventListener('DOMContentLoaded', function() {
         endTime.min = now.toISOString().slice(0, 16);
     }
     
-    // تفعيل Service Worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./service-worker.js')
-            .then(registration => {
-                console.log('Service Worker registered:', registration);
-            })
-            .catch(error => {
-                console.log('Service Worker registration failed:', error);
-            });
-    }
-    
     console.log('جميع الدوال جاهزة للاستخدام!');
 });
-// ============================================
-// تحسينات للطفل على الموبايل
-// ============================================
-
-function optimizeForMobile() {
-    // تحسين حجم الخطوط للشاشات الصغيرة
-    if (window.innerWidth < 768) {
-        document.documentElement.style.fontSize = '14px';
-        
-        // تحسين أزرار الإدخال
-        const inputs = document.querySelectorAll('input, select, textarea, button');
-        inputs.forEach(element => {
-            element.style.fontSize = '16px'; // منع التكبير التلقائي في iOS
-        });
-    }
-}
-
-// تحسين عرض الخلوة للطفل على الموبايل
-function showKholwaFor(name, cls) {
-    const shared = LS.get('kholwa');
-    const enter = document.getElementById('childEntry');
-    const view = document.getElementById('kholwaView');
-    
-    if (!enter || !view) {
-        alert('❌ حدث خطأ في تحميل الخلوة. حاول تحديث الصفحة.');
-        return;
-    }
-
-    // إخفاء شاشة الدخول وإظهار شاشة الخلوة
-    enter.style.display = 'none';
-    view.style.display = 'block';
-
-    // إذا لم توجد خلوة
-    if (!shared) {
-        document.getElementById('kholwaContent').innerHTML = `
-            <div style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 4rem; margin-bottom: 20px;">📖</div>
-                <h3 style="color: #666;">لا توجد خلوة نشطة حالياً</h3>
-                <p class="note">انتظر حتى ينشر المسؤول الخلوة اليومية</p>
-                <button onclick="goHome()" class="btn" style="background: #3498db; color: white; margin-top: 20px;">
-                    العودة للرئيسية
-                </button>
-            </div>
-        `;
-        return;
-    }
-
-    const now = new Date();
-    const start = new Date(shared.startISO);
-    const end = new Date(shared.endISO);
-    const isToday = shared.date === todayDate();
-
-    // التحقق من توقيت الخلوة
-    if (!isToday || now < start || now > end) {
-        let message = 'الخلوة مغلقة لهذا اليوم، أشوفك بكرة ❤️';
-        if (!isToday) message = 'لا توجد خلوة لليوم الحالي';
-        else if (now < start) message = `الخلوة ستبدأ في:<br>${start.toLocaleString('ar-EG')}`;
-        else if (now > end) message = 'انتهت فترة الخلوة لهذا اليوم';
-
-        document.getElementById('kholwaContent').innerHTML = `
-            <div style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 4rem; margin-bottom: 20px;">⏰</div>
-                <h3 style="color: #666;">${message}</h3>
-                <button onclick="goHome()" class="btn" style="background: #3498db; color: white; margin-top: 20px;">
-                    العودة للرئيسية
-                </button>
-            </div>
-        `;
-        return;
-    }
-
-    // عرض محتوى الخلوة
-    let contentHTML = '';
-    if (shared.type === 'text') {
-        contentHTML = `<div class="kholwa-content">${shared.content.replace(/\n/g, '<br>')}</div>`;
-    } else if (shared.type === 'image') {
-        const imageMatch = shared.content.match(/!\[.*?\]\((.*?)\)/);
-        if (imageMatch && imageMatch[1]) {
-            contentHTML = `
-                <div style="text-align: center;">
-                    <img src="${imageMatch[1]}" alt="صورة الخلوة" 
-                         style="max-width:100%; height:auto; border-radius:12px; margin:10px 0;
-                                box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                </div>
-            `;
-        } else {
-            contentHTML = `<div class="kholwa-content">${shared.content}</div>`;
-        }
-    } else {
-        contentHTML = `<div class="kholwa-content">${shared.content}</div>`;
-    }
-
-    // عرض نقاط الطفل الحالية
-    const currentPoints = getStudentPoints(cls, name);
-    const pointsDisplay = `
-        <div style="text-align: center; margin: 10px 0; padding: 15px; 
-                    background: linear-gradient(135deg, #667eea, #764ba2); 
-                    color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <div style="font-size: 1.3rem; font-weight: bold;">🎯 رصيدك الحالي</div>
-            <div style="font-size: 2rem; font-weight: 800; margin: 10px 0;">${currentPoints} نقطة</div>
-            <div style="font-size: 0.9rem; opacity: 0.9;">استمر في المشاركة لكسب المزيد!</div>
-        </div>
-    `;
-
-    document.getElementById('kholwaContent').innerHTML = `
-        ${pointsDisplay}
-        <div class="kholwa-card" style="margin: 15px 0;">
-            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px; font-size: 1.4rem;">
-                ${shared.title || 'خلوة اليوم'}
-            </h3>
-            <div class="kholwa-body">
-                ${contentHTML}
-            </div>
-        </div>
-    `;
-
-    const questionArea = document.getElementById('questionArea');
-    const choicesArea = document.getElementById('choicesArea');
-    const resultArea = document.getElementById('resultArea');
-    
-    // التحقق إذا كان الطفل قد أجاب اليوم
-    const answeredToday = LS.get('answeredToday') || {};
-    const todayKey = `${todayDate()}_${cls}_${name}`;
-    const hasAnsweredToday = answeredToday[todayKey];
-
-    if (shared.question && shared.question.text && !hasAnsweredToday) {
-        questionArea.innerHTML = `
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin: 20px 0; border-right: 4px solid #e74c3c;">
-                <h4 style="color: #e74c3c; margin-bottom: 15px; text-align: center;">🧠 سؤال اليوم</h4>
-                <p style="font-size: 1.1rem; font-weight: 600; text-align: center;">${shared.question.text}</p>
-            </div>
-        `;
-        
-        let choicesHTML = '<div style="margin-top: 15px;">';
-        shared.question.options.forEach((option, index) => {
-            if (option && option.trim() !== '') {
-                choicesHTML += `
-                    <button class="answer-option" 
-                            onclick="handleAnswerSelection(${index}, '${name.replace(/'/g, "\\'")}', '${cls}')"
-                            style="display: block; width: 100%; margin: 12px 0; padding: 16px; 
-                                   border-radius: 12px; border: 2px solid #3498db; 
-                                   background: white; cursor: pointer; font-size: 16px;
-                                   font-weight: 600; transition: all 0.3s ease;">
-                        ${option}
-                    </button>
-                `;
-            }
-        });
-        choicesHTML += '</div>';
-        choicesArea.innerHTML = choicesHTML;
-    } else if (hasAnsweredToday) {
-        questionArea.innerHTML = `
-            <div style="text-align: center; padding: 30px 20px; background: #e8f4fd; 
-                        border-radius: 12px; margin: 20px 0; border: 2px solid #27ae60;">
-                <div style="font-size: 3rem; margin-bottom: 15px;">✅</div>
-                <h4 style="color: #27ae60; margin-bottom: 10px;">أحسنت!</h4>
-                <p style="color: #666; font-size: 1rem;">لقد أجبت على سؤال اليوم بالفعل</p>
-                <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">عد غداً للإجابة على سؤال جديد!</p>
-            </div>
-        `;
-        choicesArea.innerHTML = '';
-    } else {
-        questionArea.innerHTML = '';
-        choicesArea.innerHTML = '';
-    }
-    resultArea.innerHTML = '';
-}
-
-// تحديث تهيئة التطبيق لإضافة تحسينات الموبايل
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('تطبيق الخلوة تم تحميله بنجاح!');
-    
-    // تحسين للشاشات الصغيرة
-    optimizeForMobile();
-    
-    // تحديث المعلومات الرئيسية عند التحميل
-    updateMainInfo();
-    
-    // تعيين الحد الأدنى للوقت على الوقت الحالي
-    const now = new Date();
-    const startTime = document.getElementById('startTime');
-    const endTime = document.getElementById('endTime');
-    
-    if (startTime) {
-        startTime.min = now.toISOString().slice(0, 16);
-    }
-    if (endTime) {
-        endTime.min = now.toISOString().slice(0, 16);
-    }
-    
-    // إضافة حدث resize لتحسين التجاوب
-    window.addEventListener('resize', optimizeForMobile);
-    
-    // تفعيل Service Worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./service-worker.js')
-            .then(registration => {
-                console.log('Service Worker registered:', registration);
-            })
-            .catch(error => {
-                console.log('Service Worker registration failed:', error);
-            });
-    }
-    
-    console.log('جميع الدوال جاهزة للاستخدام!');
-});
-// نسخة مبسطة للتأكد من العمل
-function showEnhancedKholwaFor(name, cls) {
-    console.log('فتح الخلوة للطفل:', name, 'الفصل:', cls);
-    
-    const enter = document.getElementById('childEntry');
-    const view = document.getElementById('kholwaView');
-    
-    if (!enter || !view) {
-        alert('❌ عناصر العرض غير موجودة');
-        return;
-    }
-    
-    // إخفاء شاشة الدخول وإظهار شاشة الخلوة
-    enter.style.display = 'none';
-    view.style.display = 'block';
-    
-    // عرض رسالة نجاح
-    document.getElementById('kholwaContent').innerHTML = `
-        <div style="text-align: center; padding: 40px 20px;">
-            <div style="font-size: 4rem; margin-bottom: 20px;">🎉</div>
-            <h3 style="color: #27ae60;">مرحباً ${name}!</h3>
-            <p class="note">لقد دخلت بنجاح إلى الخلوة</p>
-            <p class="note">الفصل: ${cls}</p>
-            <button onclick="goHome()" class="btn" style="background: #3498db; color: white; margin-top: 20px;">
-                العودة للرئيسية
-            </button>
-        </div>
-    `;
-        }
-// ============================================
-// نظام المشاركة بين جميع الأجهزة
-// ============================================
-
-const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/yourusername/yourrepo/main/data.json';
-
-async function fetchSharedData() {
-    try {
-        console.log('جاري جلب البيانات من السيرفر...');
-        
-        // محاولة جلب البيانات من GitHub
-        const response = await fetch(GITHUB_RAW_URL + '?t=' + Date.now());
-        if (!response.ok) throw new Error('الملف غير موجود على السيرفر');
-        
-        const data = await response.json();
-        console.log('تم جلب البيانات بنجاح من السيرفر');
-        return { ...data, source: 'server' };
-        
-    } catch (error) {
-        console.log('استخدام البيانات المحلية كبديل');
-        // استخدام البيانات المحلية كبديل
-        return { 
-            kholwa: LS.get('kholwa'), 
-            history: LS.get('history') || [],
-            source: 'local'
-        };
-    }
-}
-
-// تحديث الدوال لاستخدام النظام الجديد
-async function updateMainInfo() {
-    const shared = await fetchSharedData();
-    const kh = shared.kholwa;
-    const mainInfo = document.getElementById('mainInfo');
-    const todayTitle = document.getElementById('todayTitle');
-    
-    if (!mainInfo || !todayTitle) return;
-    if (!kh || kh.date !== todayDate()) { 
-        mainInfo.style.display = 'none'; 
-        return; 
-    }
-    
-    mainInfo.style.display = 'block';
-    todayTitle.innerText = kh.title || 'خلوة اليوم';
-    updateTimerDisplay(kh);
-}
-
-async function showKholwaForChild(name, cls) {
-    const shared = await fetchSharedData();
-    const kh = shared.kholwa;
-    const enter = document.getElementById('childEntry');
-    const view = document.getElementById('kholwaView');
-    
-    if (!enter || !view) {
-        showErrorMessage('حدث خطأ في تحميل الخلوة');
-        return;
-    }
-
-    enter.style.display = 'none';
-    view.style.display = 'block';
-
-    if (!kh) {
-        document.getElementById('kholwaContent').innerHTML = `
-            <div style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 4rem; margin-bottom: 20px;">📖</div>
-                <h3 style="color: #666;">لا توجد خلوة نشطة حالياً</h3>
-                <p class="note">انتظر حتى ينشر المسؤول الخلوة اليومية</p>
-                <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 15px 0;">
-                    <strong>ملاحظة:</strong> تأكد من اتصال الإنترنت
-                </div>
-                <button onclick="goHome()" class="btn" style="background: #3498db; color: white;">
-                    العودة للرئيسية
-                </button>
-            </div>
-        `;
-        return;
-    }
-
-    // باقي الكود كما هو...
-    displayKholwaContent(kh, name, cls);
-                                             }

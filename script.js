@@ -945,3 +945,365 @@ if ('serviceWorker' in navigator) {
       console.log('Service Worker registration failed:', error);
     });
     }
+// ============================================
+// دوال واجهة المستخدم المفقودة
+// ============================================
+
+function loadTeacherStatus(classId) {
+    const teacherDashboard = document.getElementById('teacherDashboard');
+    const teacherStatus = document.getElementById('teacherStatus');
+    
+    if (!teacherDashboard || !teacherStatus) return;
+    
+    const students = LS.get('students') || {};
+    const classStudents = students[classId] || [];
+    const history = LS.get('history') || [];
+    const today = history.find(day => day.date === todayDate());
+    
+    let dashboardHTML = `
+        <div class="teacher-dashboard">
+            <h4>📊 لوحة تحكم الفصل ${classId}</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;">
+                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
+                    <div style="font-size: 1.5rem; font-weight: bold;">${classStudents.length}</div>
+                    <div style="font-size: 0.8rem;">إجمالي الطلاب</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
+                    <div style="font-size: 1.5rem; font-weight: bold;">${today ? (today.answers[classId] || []).length : 0}</div>
+                    <div style="font-size: 0.8rem;">مشاركين اليوم</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    let statusHTML = '<h4>👥 قائمة الطلاب</h4>';
+    
+    if (classStudents.length === 0) {
+        statusHTML += '<p class="note">لا يوجد طلاب في هذا الفصل</p>';
+    } else {
+        classStudents.forEach(student => {
+            const points = getStudentPoints(classId, student.name);
+            const hasAnsweredToday = today ? (today.answers[classId] || []).includes(student.name) : false;
+            const performance = getStudentPerformance(points);
+            
+            statusHTML += `
+                <div class="student-progress-card">
+                    <div style="display: flex; justify-content: between; align-items: center;">
+                        <div style="flex: 1;">
+                            <strong>${student.name}</strong>
+                            <span class="performance-badge ${performance.class}">${performance.text}</span>
+                        </div>
+                        <div style="text-align: left;">
+                            <span class="points-badge">${points} نقطة</span>
+                            ${hasAnsweredToday ? '✅' : '❌'}
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min((points / 100) * 100, 100)}%"></div>
+                    </div>
+                    <button class="encourage-btn" onclick="sendEncouragement('${classId}', '${student.name.replace(/'/g, "\\'")}')">
+                        💌 تشجيع
+                    </button>
+                </div>
+            `;
+        });
+    }
+    
+    teacherDashboard.innerHTML = dashboardHTML;
+    teacherStatus.innerHTML = statusHTML;
+}
+
+function getStudentPerformance(points) {
+    if (points >= 100) return { text: 'متميز', class: 'performance-excellent' };
+    if (points >= 50) return { text: 'جيد جداً', class: 'performance-good' };
+    if (points >= 20) return { text: 'جيد', class: 'performance-average' };
+    return { text: 'يحتاج تحسن', class: 'performance-needs-improvement' };
+}
+
+function sendEncouragement(classId, studentName) {
+    const message = prompt(`اكتب رسالة تشجيع لـ ${studentName}:`);
+    if (message && message.trim()) {
+        const studentMessages = LS.get('studentMessages') || {};
+        const messageKey = `${classId}_${studentName}`;
+        if (!studentMessages[messageKey]) studentMessages[messageKey] = [];
+        studentMessages[messageKey].push({
+            message: message.trim(),
+            date: new Date().toLocaleString('ar-EG'),
+            type: 'encouragement'
+        });
+        LS.set('studentMessages', studentMessages);
+        
+        addNotification('رسالة تشجيع', `تم إرسال رسالة لـ ${studentName}`, 'success');
+        alert(`✅ تم إرسال رسالة التشجيع لـ ${studentName}`);
+    }
+}
+
+// ============================================
+// دوال التقارير والإحصائيات
+// ============================================
+
+function showAnalytics() {
+    const history = LS.get('history') || [];
+    const students = LS.get('students') || {};
+    
+    let totalStudents = 0;
+    Object.values(students).forEach(cls => totalStudents += cls.length);
+    
+    let totalParticipation = 0;
+    let totalPoints = 0;
+    const studentPoints = LS.get('studentPoints') || {};
+    Object.values(studentPoints).forEach(points => totalPoints += points);
+    
+    history.forEach(day => {
+        Object.values(day.answers || {}).forEach(participants => {
+            totalParticipation += participants.length;
+        });
+    });
+    
+    const analyticsHTML = `
+        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;">
+            <div style="background: white; padding: 25px; border-radius: 15px; max-width: 500px; margin: 20px; max-height: 80vh; overflow-y: auto; text-align: right;">
+                <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px;">📊 التقارير والإحصائيات</h3>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${totalStudents}</div>
+                        <div class="stat-label">إجمالي الطلاب</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${history.length}</div>
+                        <div class="stat-label">عدد الخلوات</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${totalParticipation}</div>
+                        <div class="stat-label">إجمالي المشاركات</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${totalPoints}</div>
+                        <div class="stat-label">إجمالي النقاط</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <h4>📈 توزيع الطلاب على الفصول</h4>
+                    ${Object.keys(students).map(cls => `
+                        <div style="margin: 10px 0;">
+                            <div style="display: flex; justify-content: between; margin-bottom: 5px;">
+                                <span>الفصل ${cls}</span>
+                                <span>${students[cls].length} طالب</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${(students[cls].length / totalStudents) * 100}%"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: #3498db; color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                        إغلاق
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', analyticsHTML);
+}
+
+function createManualBackup() {
+    const backupData = {
+        students: LS.get('students'),
+        teachers: LS.get('teachers'),
+        history: LS.get('history'),
+        studentPoints: LS.get('studentPoints'),
+        studentPhotos: LS.get('studentPhotos'),
+        notifications: LS.get('notifications'),
+        studentMessages: LS.get('studentMessages'),
+        backupDate: new Date().toISOString(),
+        version: '1.0.0'
+    };
+    
+    const dataStr = JSON.stringify(backupData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `kholwa-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    addNotification('نسخ احتياطي', 'تم إنشاء نسخة احتياطية بنجاح', 'success');
+}
+
+function resetAll() {
+    if (confirm('⚠️ هل أنت متأكد من تصفير جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء!')) {
+        localStorage.clear();
+        initializeData();
+        alert('✅ تم تصفير جميع البيانات');
+        location.reload();
+    }
+}
+
+// ============================================
+// دوال تحميل الصور
+// ============================================
+
+function uploadStudentPhoto(classId, studentName) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const studentPhotos = LS.get('studentPhotos') || {};
+                studentPhotos[`${classId}_${studentName}`] = e.target.result;
+                LS.set('studentPhotos', studentPhotos);
+                addNotification('صورة الطالب', `تم تحديث صورة ${studentName}`, 'success');
+                loadTeacherStatus(classId);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    input.click();
+}
+
+// ============================================
+// دوال الوسائط المتعددة المحسنة
+// ============================================
+
+function handleMediaUpload(type, content) {
+    const kholwaText = document.getElementById('kholwaText');
+    if (!kholwaText) return;
+    
+    switch (type) {
+        case 'text':
+            kholwaText.value = content;
+            break;
+        case 'image':
+            kholwaText.value = `![صورة الخلوة](${content})`;
+            break;
+        case 'pdf':
+            kholwaText.value = `[📄 ملف PDF](${content})`;
+            break;
+        case 'word':
+            kholwaText.value = `[📋 ملف Word](${content})`;
+            break;
+    }
+}
+
+// ============================================
+// تهيئة التطبيق
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // تحديث المعلومات الرئيسية عند التحميل
+    updateMainInfo();
+    
+    // تعيين الحد الأدنى للوقت على الوقت الحالي
+    const now = new Date();
+    const startTime = document.getElementById('startTime');
+    const endTime = document.getElementById('endTime');
+    
+    if (startTime) {
+        startTime.min = now.toISOString().slice(0, 16);
+    }
+    if (endTime) {
+        endTime.min = now.toISOString().slice(0, 16);
+    }
+    
+    // تفعيل Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(registration => {
+                console.log('Service Worker registered:', registration);
+            })
+            .catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
+    }
+    
+    console.log('تطبيق الخلوة جاهز للاستخدام!');
+});
+
+// ============================================
+// دوال المساعدة الإضافية
+// ============================================
+
+function formatDate(dateString) {
+    const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        weekday: 'long'
+    };
+    return new Date(dateString).toLocaleDateString('ar-EG', options);
+}
+
+function formatTime(dateString) {
+    const options = { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    };
+    return new Date(dateString).toLocaleTimeString('ar-EG', options);
+}
+
+function showSuccessMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #27ae60;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+    `;
+    messageDiv.textContent = message;
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        messageDiv.remove();
+    }, 3000);
+}
+
+function showErrorMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #e74c3c;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+    `;
+    messageDiv.textContent = message;
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        messageDiv.remove();
+    }, 3000);
+}
+
+// إضافة أنماط CSS للرسائل
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+`;
+document.head.appendChild(style);

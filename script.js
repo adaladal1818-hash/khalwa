@@ -1487,3 +1487,84 @@ function showEnhancedKholwaFor(name, cls) {
         </div>
     `;
         }
+// ============================================
+// نظام المشاركة بين جميع الأجهزة
+// ============================================
+
+const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/yourusername/yourrepo/main/data.json';
+
+async function fetchSharedData() {
+    try {
+        console.log('جاري جلب البيانات من السيرفر...');
+        
+        // محاولة جلب البيانات من GitHub
+        const response = await fetch(GITHUB_RAW_URL + '?t=' + Date.now());
+        if (!response.ok) throw new Error('الملف غير موجود على السيرفر');
+        
+        const data = await response.json();
+        console.log('تم جلب البيانات بنجاح من السيرفر');
+        return { ...data, source: 'server' };
+        
+    } catch (error) {
+        console.log('استخدام البيانات المحلية كبديل');
+        // استخدام البيانات المحلية كبديل
+        return { 
+            kholwa: LS.get('kholwa'), 
+            history: LS.get('history') || [],
+            source: 'local'
+        };
+    }
+}
+
+// تحديث الدوال لاستخدام النظام الجديد
+async function updateMainInfo() {
+    const shared = await fetchSharedData();
+    const kh = shared.kholwa;
+    const mainInfo = document.getElementById('mainInfo');
+    const todayTitle = document.getElementById('todayTitle');
+    
+    if (!mainInfo || !todayTitle) return;
+    if (!kh || kh.date !== todayDate()) { 
+        mainInfo.style.display = 'none'; 
+        return; 
+    }
+    
+    mainInfo.style.display = 'block';
+    todayTitle.innerText = kh.title || 'خلوة اليوم';
+    updateTimerDisplay(kh);
+}
+
+async function showKholwaForChild(name, cls) {
+    const shared = await fetchSharedData();
+    const kh = shared.kholwa;
+    const enter = document.getElementById('childEntry');
+    const view = document.getElementById('kholwaView');
+    
+    if (!enter || !view) {
+        showErrorMessage('حدث خطأ في تحميل الخلوة');
+        return;
+    }
+
+    enter.style.display = 'none';
+    view.style.display = 'block';
+
+    if (!kh) {
+        document.getElementById('kholwaContent').innerHTML = `
+            <div style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 4rem; margin-bottom: 20px;">📖</div>
+                <h3 style="color: #666;">لا توجد خلوة نشطة حالياً</h3>
+                <p class="note">انتظر حتى ينشر المسؤول الخلوة اليومية</p>
+                <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                    <strong>ملاحظة:</strong> تأكد من اتصال الإنترنت
+                </div>
+                <button onclick="goHome()" class="btn" style="background: #3498db; color: white;">
+                    العودة للرئيسية
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    // باقي الكود كما هو...
+    displayKholwaContent(kh, name, cls);
+                                             }

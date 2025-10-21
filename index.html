@@ -1,4 +1,4 @@
-٩<!doctype html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
@@ -20,7 +20,6 @@
     <button class="btn btn-green" onclick="showPanel('child')">🟢 الطفل</button>
     <button class="btn" style="background:#ffd700;color:#000" onclick="showLeaderboard()">🏆 لوحة المتصدرين</button>
     
-    <!-- زر الإشعارات المضاف -->
     <button class="btn" style="background:#e67e22;color:white;position:relative;" onclick="showNotificationsPanel()">
       🔔 الإشعارات
       <span id="notificationBadge" class="notification-badge" style="display:none">0</span>
@@ -43,126 +42,118 @@
         <button class="btn btn-red" id="adminLoginBtn" onclick="adminLogin()">دخول</button>
         <button class="btn" id="adminQuick" style="background:#eee" onclick="goHome()">عودة</button>
       </div>
-    </div
-    <!-- في قسم adminPanel -->
-<div id="adminPanel" style="display:none">
-    <label>عنوان الخلوة:</label>
-    <input id="dayTitle" class="input" placeholder="عنوان اليوم">
-    
-    <!-- اختيار نوع المحتوى - معدل -->
-    <label>اختر طريقة إضافة المحتوى:</label>
-    <div class="media-type-grid">
-        <button type="button" class="media-type-btn" style="background: #3498db; color: white;" onclick="setMediaType('text', event)">📝 نص مباشر</button>
-        <button type="button" class="media-type-btn" style="background: #9b59b6; color: white;" onclick="setMediaType('paste', event)">📋 نسخ ولصق</button>
-        <button type="button" class="media-type-btn" style="background: #e74c3c; color: white;" onclick="setMediaType('camera', event)">📷 كاميرا</button>
-        <button type="button" class="media-type-btn" style="background: #2ecc71; color: white;" onclick="setMediaType('image', event)">🖼️ رفع صورة</button>
-        <button type="button" class="media-type-btn" style="background: #e67e22; color: white;" onclick="setMediaType('pdf', event)">📄 ملف PDF</button>
-        <button type="button" class="media-type-btn" style="background: #34495e; color: white;" onclick="setMediaType('word', event)">📋 ملف Word</button>
     </div>
 
-    <!-- حقل النص العادي -->
-    <div id="textInput">
-        <label>نص الخلوة:</label>
-        <textarea id="kholwaText" class="input" rows="5" placeholder="اكتب نص الخلوة أو الآيات..."></textarea>
-    </div>
+    <div id="adminPanel" style="display:none">
+      <label>عنوان الخلوة:</label>
+      <input id="dayTitle" class="input" placeholder="عنوان اليوم">
+      
+      <label>اختر طريقة إضافة المحتوى:</label>
+      <div class="media-type-grid">
+          <button type="button" class="media-type-btn" style="background: #3498db; color: white;" onclick="setMediaType('text', event)">📝 نص مباشر</button>
+          <button type="button" class="media-type-btn" style="background: #9b59b6; color: white;" onclick="setMediaType('paste', event)">📋 نسخ ولصق</button>
+          <button type="button" class="media-type-btn" style="background: #e74c3c; color: white;" onclick="setMediaType('camera', event)">📷 كاميرا</button>
+          <button type="button" class="media-type-btn" style="background: #2ecc71; color: white;" onclick="setMediaType('image', event)">🖼️ رفع صورة</button>
+          <button type="button" class="media-type-btn" style="background: #e67e22; color: white;" onclick="setMediaType('pdf', event)">📄 ملف PDF</button>
+          <button type="button" class="media-type-btn" style="background: #34495e; color: white;" onclick="setMediaType('word', event)">📋 ملف Word</button>
+      </div>
 
-    <!-- حقل النسخ واللصق -->
-    <div id="pasteInput" style="display: none;">
-        <label>الصق النص هنا:</label>
-        <textarea id="pasteContent" class="input paste-area" rows="3" placeholder="الصق النص باستخدام Ctrl+V" onpaste="handlePaste(event)"></textarea>
-        <small class="note">استخدم Ctrl+V للصق النص المنسوخ</small>
-    </div>
+      <div id="textInput">
+          <label>نص الخلوة:</label>
+          <textarea id="kholwaText" class="input" rows="5" placeholder="اكتب نص الخلوة أو الآيات..."></textarea>
+      </div>
 
-    <!-- حقل الكاميرا -->
-    <div id="cameraInput" style="display: none;">
-        <label>التقاط صورة بالكاميرا:</label>
-        <div class="camera-container">
-            <div id="cameraPreview"></div>
-        </div>
-    </div>
+      <div id="pasteInput" style="display: none;">
+          <label>الصق النص هنا:</label>
+          <textarea id="pasteContent" class="input paste-area" rows="3" placeholder="الصق النص باستخدام Ctrl+V"></textarea>
+          <small class="note">استخدم Ctrl+V للصق النص المنسوخ</small>
+      </div>
 
-    <!-- حقل رفع الملفات -->
-    <div id="fileInput" style="display: none;"></div>
+      <div id="cameraInput" style="display: none;">
+          <label>التقاط صورة بالكاميرا:</label>
+          <div class="camera-container">
+              <div id="cameraPreview"></div>
+          </div>
+      </div>
 
-    <!-- باقي المحتوى -->
-    <div style="display:flex;gap:8px; margin-top: 15px;">
-        <div style="flex:1">
-            <label>بداية:</label>
-            <input id="startTime" class="input" type="datetime-local">
-        </div>
-        <div style="flex:1">
-            <label>نهاية:</label>
-            <input id="endTime" class="input" type="datetime-local">
-        </div>
-    </div>
-    
-    <!-- باقي المحتوى يبقى كما هو -->
-    <hr>
-    <h4>سؤال اليوم (اختيار من متعدد)</h4>
-    <label>نص السؤال:</label>
-    <input id="qText" class="input" placeholder="اكتب السؤال">
-    
-    <label>الخيار 1:</label>
-    <input id="q1" class="input" placeholder="الخيار الأول">
-    
-    <label>الخيار 2:</label>
-    <input id="q2" class="input" placeholder="الخيار الثاني">
-    
-    <label>الخيار 3:</label>
-    <input id="q3" class="input" placeholder="الخيار الثالث">
-    
-    <label>اختر رقم الإجابة الصحيحة:</label>
-    <select id="qCorrect" class="input">
-        <option value="0">1</option>
-        <option value="1">2</option>
-        <option value="2">3</option>
-    </select>
-    
-    <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn btn-red" id="publishBtn" onclick="publishKholwa()">نشر الخلوة</button>
-        <button class="btn" id="closeNowBtn" style="background:#ffa500;color:#fff" onclick="closeNow()">غلق الآن</button>
-    </div>
+      <div id="fileInput" style="display: none;"></div>
 
-    <hr>
-    <h4>إدارة الخدام</h4>
-    <label>اسم الخادم:</label>
-    <input id="tuser" class="input" placeholder="اسم الخادم">
-    
-    <label>كلمة المرور للخادم:</label>
-    <input id="tpass" class="input" value="servant123" type="text" placeholder="كلمة المرور">
-    
-    <label>اختر فصل للخادم:</label>
-    <select id="tclass" class="input">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-    </select>
-    
-    <button class="btn btn-red" id="createTeacherBtn" onclick="createTeacher()">إنشاء خادم</button>
+      <div style="display:flex;gap:8px; margin-top: 15px;">
+          <div style="flex:1">
+              <label>بداية:</label>
+              <input id="startTime" class="input" type="datetime-local">
+          </div>
+          <div style="flex:1">
+              <label>نهاية:</label>
+              <input id="endTime" class="input" type="datetime-local">
+          </div>
+      </div>
+      
+      <hr>
+      <h4>سؤال اليوم (اختيار من متعدد)</h4>
+      <label>نص السؤال:</label>
+      <input id="qText" class="input" placeholder="اكتب السؤال">
+      
+      <label>الخيار 1:</label>
+      <input id="q1" class="input" placeholder="الخيار الأول">
+      
+      <label>الخيار 2:</label>
+      <input id="q2" class="input" placeholder="الخيار الثاني">
+      
+      <label>الخيار 3:</label>
+      <input id="q3" class="input" placeholder="الخيار الثالث">
+      
+      <label>اختر رقم الإجابة الصحيحة:</label>
+      <select id="qCorrect" class="input">
+          <option value="0">1</option>
+          <option value="1">2</option>
+          <option value="2">3</option>
+      </select>
+      
+      <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-red" id="publishBtn" onclick="publishKholwa()">نشر الخلوة</button>
+          <button class="btn" id="closeNowBtn" style="background:#ffa500;color:#fff" onclick="closeNow()">غلق الآن</button>
+      </div>
 
-    <hr>
-    <h4>الأيام السابقة</h4>
-    <div id="historyList" class="note"></div>
-    
-    <h4>تقارير</h4>
-    <div id="reportArea" class="note"></div>
-    
-    <!-- الأزرار الجديدة المضافة -->
-    <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn btn-blue" onclick="showAnalytics()">📊 التقارير والإحصائيات</button>
-        <button class="btn" style="background:#27ae60;color:white" onclick="createManualBackup()">💾 نسخ احتياطي</button>
+      <hr>
+      <h4>إدارة الخدام</h4>
+      <label>اسم الخادم:</label>
+      <input id="tuser" class="input" placeholder="اسم الخادم">
+      
+      <label>كلمة المرور للخادم:</label>
+      <input id="tpass" class="input" value="servant123" type="text" placeholder="كلمة المرور">
+      
+      <label>اختر فصل للخادم:</label>
+      <select id="tclass" class="input">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+      </select>
+      
+      <button class="btn btn-red" id="createTeacherBtn" onclick="createTeacher()">إنشاء خادم</button>
+
+      <hr>
+      <h4>الأيام السابقة</h4>
+      <div id="historyList" class="note"></div>
+      
+      <h4>تقارير</h4>
+      <div id="reportArea" class="note"></div>
+      
+      <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-blue" onclick="showAnalytics()">📊 التقارير والإحصائيات</button>
+          <button class="btn" style="background:#27ae60;color:white" onclick="createManualBackup()">💾 نسخ احتياطي</button>
+      </div>
+      
+      <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn" style="background:#e67e22;color:white" onclick="showNotificationsPanel()">🔔 الإشعارات</button>
+          <button class="btn" id="resetBtn" style="background:#f04d4d;color:white" onclick="resetAll()">تصفير البيانات</button>
+      </div>
+      
+      <div class="back-btn" onclick="goHome()">🔙 عوده</div>
     </div>
-    
-    <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn" style="background:#e67e22;color:white" onclick="showNotificationsPanel()">🔔 الإشعارات</button>
-        <button class="btn" id="resetBtn" style="background:#f04d4d;color:white" onclick="resetAll()">تصفير البيانات</button>
-    </div>
-    
-    <div class="back-btn" onclick="goHome()">🔙 عوده</div>
-</div>
   </div>
 
   <div id="teacher" class="card" style="display:none">
@@ -187,7 +178,6 @@
       <textarea id="studentNames" class="input" rows="3" placeholder="مثال: أحمد, محمد, فاطمة"></textarea>
       <button class="btn btn-blue" id="addStudentsBtn" onclick="addStudents()">إضافة الطلاب</button>
       
-      <!-- لوحة تحكم الخادم المحسنة -->
       <div id="teacherDashboard"></div>
       
       <div id="teacherStatus" class="note"></div>
@@ -210,10 +200,7 @@
         <option value="5">5</option>
         <option value="6">6</option>
       </select>
-
-      <button class="btn" style="background:#e67e22; color:white; margin-top:10px;" onclick="debugChildEntry()">
-    🐛 تصحيح الأخطاء
-</button>
+      
       <button class="btn btn-green" id="enterKholwaBtn" onclick="enterKholwa()">فتح الخلوة</button>
       
       <div class="small note">

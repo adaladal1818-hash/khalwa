@@ -1,0 +1,21 @@
+# Enable CORS for JSON files
+<Files "data.json">
+    Header set Access-Control-Allow-Origin "*"
+    Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type"
+</Files>
+
+# Cache control for static files
+<FilesMatch "\.(html|css|js|json|svg)$">
+    Header set Cache-Control "max-age=3600, public"
+</FilesMatch>
+
+# Enable CORS for fonts
+<FilesMatch "\.(ttf|otf|eot|woff|woff2)$">
+    Header set Access-Control-Allow-Origin "*"
+</FilesMatch>
+
+# Redirect to HTTPS (optional)
+# RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]

@@ -733,20 +733,72 @@ function sendEncouragement(classId, studentName) {
 // ============================================
 // نظام الطفل
 // ============================================
+// ============================================
+// إصلاح مشكلة دخول الطفل - النسخة المؤكدة
+// ============================================
+
 function enterKholwa() {
-    const name = document.getElementById('childName').value.trim();
-    const cls = document.getElementById('childClass').value;
-    if (!name) return alert('ادخل الاسم');
-    const students = LS.get('students') || {};
-    let list = students[cls] || [];
-    
-    // التصحيح هنا: تغيير 'n' إلى 'name'
-    if (!list.find(s => s.name === name)) {
-        list.push({ name: name, answeredDates: [] });
-        students[cls] = list;
-        LS.set('students', students);
+    try {
+        // الحصول على القيم من الحقول
+        const nameInput = document.getElementById('childName');
+        const classSelect = document.getElementById('childClass');
+        
+        if (!nameInput || !classSelect) {
+            alert('❌ عناصر الإدخال غير موجودة');
+            return;
+        }
+        
+        const name = nameInput.value.trim();
+        const cls = classSelect.value;
+        
+        console.log('بيانات الدخول:', { name, cls });
+        
+        if (!name) {
+            alert('❌ الرجاء إدخال الاسم');
+            nameInput.focus();
+            return;
+        }
+        
+        // حفظ بيانات الطالب
+        const students = LS.get('students') || {};
+        if (!students[cls]) {
+            students[cls] = [];
+        }
+        
+        // التحقق من وجود الطالب وإضافته إذا لم يكن موجوداً
+        const studentExists = students[cls].some(student => student.name === name);
+        if (!studentExists) {
+            students[cls].push({ 
+                name: name, 
+                answeredDates: [],
+                joinDate: new Date().toISOString()
+            });
+            LS.set('students', students);
+            console.log('تم إضافة طالب جديد:', name);
+        }
+        
+        // الانتقال إلى شاشة الخلوة
+        showEnhancedKholwaFor(name, cls);
+        
+    } catch (error) {
+        console.error('خطأ في دخول الطفل:', error);
+        alert('❌ حدث خطأ غير متوقع. حاول مرة أخرى.');
     }
-    showKholwaFor(name, cls);
+}
+
+// دالة مبسطة للاختبار
+function testChildEntry() {
+    console.log('=== اختبار دخول الطفل ===');
+    console.log('عنصر childName:', document.getElementById('childName'));
+    console.log('عنصر childClass:', document.getElementById('childClass'));
+    console.log('دالة enterKholwa:', typeof enterKholwa);
+    console.log('دالة showEnhancedKholwaFor:', typeof showEnhancedKholwaFor);
+    
+    // اختبار سريع
+    document.getElementById('childName').value = 'طفل تجريبي';
+    document.getElementById('childClass').value = '1';
+    enterKholwa();
+                }
 }
 async function showKholwaFor(name, cls) {
     const shared = await fetchShared();

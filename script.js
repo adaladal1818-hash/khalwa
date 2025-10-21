@@ -47,6 +47,7 @@ initializeData();
 function todayDate() { return new Date().toISOString().slice(0, 10); }
 
 function showPanel(id) {
+    console.log('جاري فتح لوحة:', id);
     document.getElementById('home').style.display = 'none';
     ['admin', 'teacher', 'child'].forEach(p => {
         const element = document.getElementById(p);
@@ -57,6 +58,7 @@ function showPanel(id) {
 }
 
 function goHome() {
+    console.log('العودة للصفحة الرئيسية');
     document.getElementById('home').style.display = 'block';
     ['admin', 'teacher', 'child'].forEach(p => {
         const element = document.getElementById(p);
@@ -103,12 +105,72 @@ setInterval(() => { fetchShared().then(shared => { const kh = (shared && shared.
 // ============================================
 // نظام الوسائط المتعددة
 // ============================================
-// ============================================
-// معالجة الوسائط المتعددة
-// ============================================
 
+let currentMediaType = 'text';
 let mediaStream = null;
 let currentCamera = 'environment';
+
+function setMediaType(type, event) {
+    console.log('تغيير نوع الوسائط إلى:', type);
+    currentMediaType = type;
+    const fields = ['textInput', 'pasteInput', 'cameraInput', 'fileInput'];
+    fields.forEach(field => { 
+        const element = document.getElementById(field); 
+        if (element) element.style.display = 'none'; 
+    });
+    
+    document.querySelectorAll('.media-type-btn').forEach(btn => { 
+        btn.classList.remove('active'); 
+    });
+    
+    if (event && event.target) event.target.classList.add('active');
+    
+    switch (type) {
+        case 'text': 
+            document.getElementById('textInput').style.display = 'block'; 
+            break;
+        case 'paste': 
+            document.getElementById('pasteInput').style.display = 'block'; 
+            break;
+        case 'camera': 
+            document.getElementById('cameraInput').style.display = 'block'; 
+            initCamera(); 
+            break;
+        case 'image': 
+            document.getElementById('fileInput').style.display = 'block'; 
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div>
+                    <strong>انقر لرفع صورة</strong>
+                    <p class="note">الصور المدعومة: JPG, PNG, GIF</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+            `; 
+            break;
+        case 'pdf': 
+            document.getElementById('fileInput').style.display = 'block'; 
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📄</div>
+                    <strong>انقر لرفع ملف PDF</strong>
+                    <p class="note">رفع ملف PDF</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept=".pdf" onchange="handleFileUpload(event)">
+            `; 
+            break;
+        case 'word': 
+            document.getElementById('fileInput').style.display = 'block'; 
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📋</div>
+                    <strong>انقر لرفع ملف Word</strong>
+                    <p class="note">رفع ملف Word</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept=".doc,.docx" onchange="handleFileUpload(event)">
+            `; 
+            break;
+    }
+}
 
 function initCamera() {
     const cameraPreview = document.getElementById('cameraPreview');
@@ -119,10 +181,6 @@ function initCamera() {
             <div class="loading-spinner"></div>
             <p>جاري تحميل الكاميرا...</p>
         </div>
-        <div class="camera-controls" style="display: none;">
-            <button type="button" class="camera-switch-btn" onclick="switchCamera()">🔄</button>
-        </div>
-        <button type="button" class="capture-btn" onclick="capturePhoto()" style="display: none;">📸</button>
     `;
 
     startCamera();
@@ -278,107 +336,6 @@ function handleFileUpload(event) {
 }
 
 // ============================================
-// دوال إضافية للمسؤول
-// ============================================
-
-function refreshHistoryList() {
-    const history = LS.get('history') || [];
-    const historyList = document.getElementById('historyList');
-    
-    if (history.length === 0) {
-        historyList.innerHTML = '<p class="note">لا توجد أيام سابقة</p>';
-        return;
-    }
-
-    let html = '<div style="max-height: 200px; overflow-y: auto;">';
-    history.slice().reverse().forEach((day, index) => {
-        html += `
-            <div style="padding: 8px; margin: 5px 0; background: #f8f9fa; border-radius: 6px; border: 1px solid #ddd;">
-                <strong>${day.date}</strong>: ${day.title}
-                <button onclick="loadDayReport('${day.date}')" class="btn" style="padding: 4px 8px; margin-top: 4px; font-size: 0.8rem;">
-                    📊 تقرير
-                </button>
-            </div>
-        `;
-    });
-    html += '</div>';
-    historyList.innerHTML = html;
-}
-
-function loadReport() {
-    const reportArea = document.getElementById('reportArea');
-    const students = LS.get('students') || {};
-    let totalStudents = 0;
-    Object.values(students).forEach(cls => totalStudents += cls.length);
-    
-    const today = todayDate();
-    const history = LS.get('history') || [];
-    const todayData = history.find(day => day.date === today);
-    
-    let todayParticipants = 0;
-    if (todayData && todayData.answers) {
-        Object.values(todayData.answers).forEach(cls => todayParticipants += cls.length);
-    }
-
-    reportArea.innerHTML = `
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number">${totalStudents}</div>
-                <div class="stat-label">إجمالي الطلاب</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">${todayParticipants}</div>
-                <div class="stat-label">مشاركين اليوم</div>
-            </div>
-        </div>
-    `;
-}
-
-function loadDayReport(date) {
-    const history = LS.get('history') || [];
-    const day = history.find(d => d.date === date);
-    if (!day) return;
-
-    let reportHTML = `<h4>تقرير ${date}</h4>`;
-    let totalParticipants = 0;
-
-    Object.keys(day.answers || {}).forEach(cls => {
-        const participants = day.answers[cls].length;
-        totalParticipants += participants;
-        reportHTML += `<p>الفصل ${cls}: ${participants} طالب</p>`;
-    });
-
-    reportHTML += `<p><strong>المجموع: ${totalParticipants} طالب</strong></p>`;
-    
-    const reportArea = document.getElementById('reportArea');
-    reportArea.innerHTML = reportHTML;
-}
-
-function resetAll() {
-    if (confirm('⚠️ هل أنت متأكد من تصفير جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء!')) {
-        localStorage.clear();
-        initializeData();
-        alert('✅ تم تصفير جميع البيانات');
-let currentMediaType = 'text';
-
-function setMediaType(type, event) {
-    currentMediaType = type;
-    const fields = ['textInput', 'pasteInput', 'cameraInput', 'fileInput'];
-    fields.forEach(field => { const element = document.getElementById(field); if (element) element.style.display = 'none'; });
-    document.querySelectorAll('.media-type-btn').forEach(btn => { btn.classList.remove('active'); });
-    if (event && event.target) event.target.classList.add('active');
-    
-    switch (type) {
-        case 'text': document.getElementById('textInput').style.display = 'block'; break;
-        case 'paste': document.getElementById('pasteInput').style.display = 'block'; break;
-        case 'camera': document.getElementById('cameraInput').style.display = 'block'; initCamera(); break;
-        case 'image': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div><strong>انقر لرفع صورة</strong><p class="note">الصور المدعومة: JPG, PNG, GIF</p></div><input type="file" id="fileUpload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">`; break;
-        case 'pdf': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">📄</div><strong>انقر لرفع ملف PDF</strong><p class="note">رفع ملف PDF</p></div><input type="file" id="fileUpload" class="hidden" accept=".pdf" onchange="handleFileUpload(event)">`; break;
-        case 'word': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">📋</div><strong>انقر لرفع ملف Word</strong><p class="note">رفع ملف Word</p></div><input type="file" id="fileUpload" class="hidden" accept=".doc,.docx" onchange="handleFileUpload(event)">`; break;
-    }
-}
-
-// ============================================
 // نظام المسؤول
 // ============================================
 
@@ -529,8 +486,81 @@ function createTeacher() {
     document.getElementById('tpass').value = '';
 }
 
+function refreshHistoryList() {
+    const history = LS.get('history') || [];
+    const historyList = document.getElementById('historyList');
+    
+    if (history.length === 0) {
+        historyList.innerHTML = '<p class="note">لا توجد أيام سابقة</p>';
+        return;
+    }
+
+    let html = '<div style="max-height: 200px; overflow-y: auto;">';
+    history.slice().reverse().forEach((day, index) => {
+        html += `
+            <div style="padding: 8px; margin: 5px 0; background: #f8f9fa; border-radius: 6px; border: 1px solid #ddd;">
+                <strong>${day.date}</strong>: ${day.title}
+                <button onclick="loadDayReport('${day.date}')" class="btn" style="padding: 4px 8px; margin-top: 4px; font-size: 0.8rem;">
+                    📊 تقرير
+                </button>
+            </div>
+        `;
+    });
+    html += '</div>';
+    historyList.innerHTML = html;
+}
+
+function loadReport() {
+    const reportArea = document.getElementById('reportArea');
+    const students = LS.get('students') || {};
+    let totalStudents = 0;
+    Object.values(students).forEach(cls => totalStudents += cls.length);
+    
+    const today = todayDate();
+    const history = LS.get('history') || [];
+    const todayData = history.find(day => day.date === today);
+    
+    let todayParticipants = 0;
+    if (todayData && todayData.answers) {
+        Object.values(todayData.answers).forEach(cls => todayParticipants += cls.length);
+    }
+
+    reportArea.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">${totalStudents}</div>
+                <div class="stat-label">إجمالي الطلاب</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">${todayParticipants}</div>
+                <div class="stat-label">مشاركين اليوم</div>
+            </div>
+        </div>
+    `;
+}
+
+function loadDayReport(date) {
+    const history = LS.get('history') || [];
+    const day = history.find(d => d.date === date);
+    if (!day) return;
+
+    let reportHTML = `<h4>تقرير ${date}</h4>`;
+    let totalParticipants = 0;
+
+    Object.keys(day.answers || {}).forEach(cls => {
+        const participants = day.answers[cls].length;
+        totalParticipants += participants;
+        reportHTML += `<p>الفصل ${cls}: ${participants} طالب</p>`;
+    });
+
+    reportHTML += `<p><strong>المجموع: ${totalParticipants} طالب</strong></p>`;
+    
+    const reportArea = document.getElementById('reportArea');
+    reportArea.innerHTML = reportHTML;
+}
+
 // ============================================
-// نظام الخدام - معدل
+// نظام الخدام
 // ============================================
 
 function teacherLogin() {
@@ -611,8 +641,97 @@ function addStudents() {
     loadTeacherStatus(cls);
 }
 
+function loadTeacherStatus(classId) {
+    const teacherDashboard = document.getElementById('teacherDashboard');
+    const teacherStatus = document.getElementById('teacherStatus');
+    
+    if (!teacherDashboard || !teacherStatus) return;
+    
+    const students = LS.get('students') || {};
+    const classStudents = students[classId] || [];
+    const history = LS.get('history') || [];
+    const today = history.find(day => day.date === todayDate());
+    
+    let dashboardHTML = `
+        <div class="teacher-dashboard">
+            <h4>📊 لوحة تحكم الفصل ${classId}</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;">
+                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
+                    <div style="font-size: 1.5rem; font-weight: bold;">${classStudents.length}</div>
+                    <div style="font-size: 0.8rem;">إجمالي الطلاب</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
+                    <div style="font-size: 1.5rem; font-weight: bold;">${today ? (today.answers[classId] || []).length : 0}</div>
+                    <div style="font-size: 0.8rem;">مشاركين اليوم</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    let statusHTML = '<h4>👥 قائمة الطلاب</h4>';
+    
+    if (classStudents.length === 0) {
+        statusHTML += '<p class="note">لا يوجد طلاب في هذا الفصل</p>';
+    } else {
+        classStudents.forEach(student => {
+            const points = getStudentPoints(classId, student.name);
+            const hasAnsweredToday = today ? (today.answers[classId] || []).includes(student.name) : false;
+            const performance = getStudentPerformance(points);
+            
+            statusHTML += `
+                <div class="student-progress-card">
+                    <div style="display: flex; justify-content: between; align-items: center;">
+                        <div style="flex: 1;">
+                            <strong>${student.name}</strong>
+                            <span class="performance-badge ${performance.class}">${performance.text}</span>
+                        </div>
+                        <div style="text-align: left;">
+                            <span class="points-badge">${points} نقطة</span>
+                            ${hasAnsweredToday ? '✅' : '❌'}
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${Math.min((points / 100) * 100, 100)}%"></div>
+                    </div>
+                    <button class="encourage-btn" onclick="sendEncouragement('${classId}', '${student.name.replace(/'/g, "\\'")}')">
+                        💌 تشجيع
+                    </button>
+                </div>
+            `;
+        });
+    }
+    
+    teacherDashboard.innerHTML = dashboardHTML;
+    teacherStatus.innerHTML = statusHTML;
+}
+
+function getStudentPerformance(points) {
+    if (points >= 100) return { text: 'متميز', class: 'performance-excellent' };
+    if (points >= 50) return { text: 'جيد جداً', class: 'performance-good' };
+    if (points >= 20) return { text: 'جيد', class: 'performance-average' };
+    return { text: 'يحتاج تحسن', class: 'performance-needs-improvement' };
+}
+
+function sendEncouragement(classId, studentName) {
+    const message = prompt(`اكتب رسالة تشجيع لـ ${studentName}:`);
+    if (message && message.trim()) {
+        const studentMessages = LS.get('studentMessages') || {};
+        const messageKey = `${classId}_${studentName}`;
+        if (!studentMessages[messageKey]) studentMessages[messageKey] = [];
+        studentMessages[messageKey].push({
+            message: message.trim(),
+            date: new Date().toLocaleString('ar-EG'),
+            type: 'encouragement'
+        });
+        LS.set('studentMessages', studentMessages);
+        
+        addNotification('رسالة تشجيع', `تم إرسال رسالة لـ ${studentName}`, 'success');
+        alert(`✅ تم إرسال رسالة التشجيع لـ ${studentName}`);
+    }
+}
+
 // ============================================
-// نظام الطفل - معدل بالكامل
+// نظام الطفل
 // ============================================
 
 function enterKholwa() {
@@ -621,7 +740,7 @@ function enterKholwa() {
     if (!name) return alert('ادخل الاسم');
     const students = LS.get('students') || {};
     let list = students[cls] || [];
-    if (!list.find(s => s.name === name)) {
+    if (!list.find(s => s.name === n)) {
         list.push({ name: name, answeredDates: [] });
         students[cls] = list;
         LS.set('students', students);
@@ -935,111 +1054,9 @@ function showLeaderboard() {
         </html>
     `);
 }
-// Register Service Worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./service-worker.js')
-    .then(registration => {
-      console.log('Service Worker registered:', registration);
-    })
-    .catch(error => {
-      console.log('Service Worker registration failed:', error);
-    });
-    }
-// ============================================
-// دوال واجهة المستخدم المفقودة
-// ============================================
-
-function loadTeacherStatus(classId) {
-    const teacherDashboard = document.getElementById('teacherDashboard');
-    const teacherStatus = document.getElementById('teacherStatus');
-    
-    if (!teacherDashboard || !teacherStatus) return;
-    
-    const students = LS.get('students') || {};
-    const classStudents = students[classId] || [];
-    const history = LS.get('history') || [];
-    const today = history.find(day => day.date === todayDate());
-    
-    let dashboardHTML = `
-        <div class="teacher-dashboard">
-            <h4>📊 لوحة تحكم الفصل ${classId}</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;">
-                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
-                    <div style="font-size: 1.5rem; font-weight: bold;">${classStudents.length}</div>
-                    <div style="font-size: 0.8rem;">إجمالي الطلاب</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
-                    <div style="font-size: 1.5rem; font-weight: bold;">${today ? (today.answers[classId] || []).length : 0}</div>
-                    <div style="font-size: 0.8rem;">مشاركين اليوم</div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    let statusHTML = '<h4>👥 قائمة الطلاب</h4>';
-    
-    if (classStudents.length === 0) {
-        statusHTML += '<p class="note">لا يوجد طلاب في هذا الفصل</p>';
-    } else {
-        classStudents.forEach(student => {
-            const points = getStudentPoints(classId, student.name);
-            const hasAnsweredToday = today ? (today.answers[classId] || []).includes(student.name) : false;
-            const performance = getStudentPerformance(points);
-            
-            statusHTML += `
-                <div class="student-progress-card">
-                    <div style="display: flex; justify-content: between; align-items: center;">
-                        <div style="flex: 1;">
-                            <strong>${student.name}</strong>
-                            <span class="performance-badge ${performance.class}">${performance.text}</span>
-                        </div>
-                        <div style="text-align: left;">
-                            <span class="points-badge">${points} نقطة</span>
-                            ${hasAnsweredToday ? '✅' : '❌'}
-                        </div>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${Math.min((points / 100) * 100, 100)}%"></div>
-                    </div>
-                    <button class="encourage-btn" onclick="sendEncouragement('${classId}', '${student.name.replace(/'/g, "\\'")}')">
-                        💌 تشجيع
-                    </button>
-                </div>
-            `;
-        });
-    }
-    
-    teacherDashboard.innerHTML = dashboardHTML;
-    teacherStatus.innerHTML = statusHTML;
-}
-
-function getStudentPerformance(points) {
-    if (points >= 100) return { text: 'متميز', class: 'performance-excellent' };
-    if (points >= 50) return { text: 'جيد جداً', class: 'performance-good' };
-    if (points >= 20) return { text: 'جيد', class: 'performance-average' };
-    return { text: 'يحتاج تحسن', class: 'performance-needs-improvement' };
-}
-
-function sendEncouragement(classId, studentName) {
-    const message = prompt(`اكتب رسالة تشجيع لـ ${studentName}:`);
-    if (message && message.trim()) {
-        const studentMessages = LS.get('studentMessages') || {};
-        const messageKey = `${classId}_${studentName}`;
-        if (!studentMessages[messageKey]) studentMessages[messageKey] = [];
-        studentMessages[messageKey].push({
-            message: message.trim(),
-            date: new Date().toLocaleString('ar-EG'),
-            type: 'encouragement'
-        });
-        LS.set('studentMessages', studentMessages);
-        
-        addNotification('رسالة تشجيع', `تم إرسال رسالة لـ ${studentName}`, 'success');
-        alert(`✅ تم إرسال رسالة التشجيع لـ ${studentName}`);
-    }
-}
 
 // ============================================
-// دوال التقارير والإحصائيات
+// دوال إضافية للمسؤول
 // ============================================
 
 function showAnalytics() {
@@ -1149,59 +1166,12 @@ function resetAll() {
 }
 
 // ============================================
-// دوال تحميل الصور
-// ============================================
-
-function uploadStudentPhoto(classId, studentName) {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const studentPhotos = LS.get('studentPhotos') || {};
-                studentPhotos[`${classId}_${studentName}`] = e.target.result;
-                LS.set('studentPhotos', studentPhotos);
-                addNotification('صورة الطالب', `تم تحديث صورة ${studentName}`, 'success');
-                loadTeacherStatus(classId);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-    input.click();
-}
-
-// ============================================
-// دوال الوسائط المتعددة المحسنة
-// ============================================
-
-function handleMediaUpload(type, content) {
-    const kholwaText = document.getElementById('kholwaText');
-    if (!kholwaText) return;
-    
-    switch (type) {
-        case 'text':
-            kholwaText.value = content;
-            break;
-        case 'image':
-            kholwaText.value = `![صورة الخلوة](${content})`;
-            break;
-        case 'pdf':
-            kholwaText.value = `[📄 ملف PDF](${content})`;
-            break;
-        case 'word':
-            kholwaText.value = `[📋 ملف Word](${content})`;
-            break;
-    }
-}
-
-// ============================================
 // تهيئة التطبيق
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('تطبيق الخلوة تم تحميله بنجاح!');
+    
     // تحديث المعلومات الرئيسية عند التحميل
     updateMainInfo();
     
@@ -1228,82 +1198,5 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    console.log('تطبيق الخلوة جاهز للاستخدام!');
+    console.log('جميع الدوال جاهزة للاستخدام!');
 });
-
-// ============================================
-// دوال المساعدة الإضافية
-// ============================================
-
-function formatDate(dateString) {
-    const options = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        weekday: 'long'
-    };
-    return new Date(dateString).toLocaleDateString('ar-EG', options);
-}
-
-function formatTime(dateString) {
-    const options = { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true 
-    };
-    return new Date(dateString).toLocaleTimeString('ar-EG', options);
-}
-
-function showSuccessMessage(message) {
-    const messageDiv = document.createElement('div');
-    messageDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #27ae60;
-        color: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        animation: slideIn 0.3s ease;
-    `;
-    messageDiv.textContent = message;
-    document.body.appendChild(messageDiv);
-    
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 3000);
-}
-
-function showErrorMessage(message) {
-    const messageDiv = document.createElement('div');
-    messageDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #e74c3c;
-        color: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        animation: slideIn 0.3s ease;
-    `;
-    messageDiv.textContent = message;
-    document.body.appendChild(messageDiv);
-    
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 3000);
-}
-
-// إضافة أنماط CSS للرسائل
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-`;
-document.head.appendChild(style);

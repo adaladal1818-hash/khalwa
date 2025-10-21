@@ -39,6 +39,7 @@ function initializeData() {
     if (!LS.get('studentPoints')) LS.set('studentPoints', {});
     if (!LS.get('notifications')) LS.set('notifications', []);
     if (!LS.get('studentMessages')) LS.set('studentMessages', {});
+    if (!LS.get('answeredToday')) LS.set('answeredToday', {});
 }
 
 initializeData();
@@ -153,15 +154,43 @@ function publishKholwa() {
     if (new Date(start) >= new Date(end)) { alert('❌ تأكد من أن البداية قبل النهاية'); return; }
     if (!text && currentMediaType === 'text') { alert('❌ اكتب محتوى الخلوة'); return; }
 
-    const obj = { date: todayDate(), title: title || 'خلوة اليوم', startISO: new Date(start).toISOString(), endISO: new Date(end).toISOString(), type: currentMediaType, content: text, question: { text: qText, options: [q1, q2, q3].filter(opt => opt.trim() !== ''), correctIndex: qCorrect } };
+    const obj = { 
+        date: todayDate(), 
+        title: title || 'خلوة اليوم', 
+        startISO: new Date(start).toISOString(), 
+        endISO: new Date(end).toISOString(), 
+        type: currentMediaType, 
+        content: text, 
+        question: { 
+            text: qText, 
+            options: [q1, q2, q3].filter(opt => opt.trim() !== ''), 
+            correctIndex: qCorrect 
+        } 
+    };
 
     LS.set('kholwa', obj);
     const history = LS.get('history') || [];
-    const day = { date: obj.date, title: obj.title, startISO: obj.startISO, endISO: obj.endISO, answers: { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] }, qaResponses: { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} } };
+    const day = { 
+        date: obj.date, 
+        title: obj.title, 
+        startISO: obj.startISO, 
+        endISO: obj.endISO, 
+        answers: { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] }, 
+        qaResponses: { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} } 
+    };
     history.push(day);
     LS.set('history', history);
 
-    const sharedData = { kholwa: obj, history: history, lastUpdated: new Date().toISOString(), totalStudents: countTotalStudents(), message: `خلوة ${obj.date} - ${obj.title}` };
+    // إعادة تعيين الإجابات اليومية
+    LS.set('answeredToday', {});
+
+    const sharedData = { 
+        kholwa: obj, 
+        history: history, 
+        lastUpdated: new Date().toISOString(), 
+        totalStudents: countTotalStudents(), 
+        message: `خلوة ${obj.date} - ${obj.title}` 
+    };
     downloadSharedFile(sharedData);
     addNotification('نشر خلوة', `تم نشر "${obj.title}" بنجاح`, 'success');
 }
@@ -246,7 +275,7 @@ function createTeacher() {
 }
 
 // ============================================
-// نظام الخدام
+// نظام الخدام - معدل
 // ============================================
 
 function teacherLogin() {
@@ -258,6 +287,58 @@ function teacherLogin() {
     document.getElementById('teacherLoginBox').style.display = 'none';
     document.getElementById('teacherPanel').style.display = 'block';
     document.getElementById('teacherClass').innerText = found.classId;
+    
+    // عرض الخلوة الحالية للخادم
+    showKholwaForTeacher(found.classId);
+    loadTeacherStatus(found.classId);
+}
+
+function showKholwaForTeacher(classId) {
+    const shared = LS.get('kholwa');
+    const teacherKholwa = document.getElementById('teacherKholwa');
+    
+    if (!teacherKholwa) return;
+    
+    if (!shared || shared.date !== todayDate()) {
+        teacherKholwa.innerHTML = '<p class="note">لا توجد خلوة نشطة لليوم</p>';
+        return;
+    }
+
+    let contentHTML = '';
+    if (shared.type === 'text') {
+        contentHTML = `<div class="kholwa-content">${shared.content.replace(/\n/g, '<br>')}</div>`;
+    } else if (shared.type === 'image') {
+        const imageMatch = shared.content.match(/!\[.*?\]\((.*?)\)/);
+        if (imageMatch && imageMatch[1]) {
+            contentHTML = `<img src="${imageMatch[1]}" alt="صورة الخلوة" style="max-width:100%; border-radius:8px; margin:10px 0;">`;
+        } else {
+            contentHTML = `<div class="kholwa-content">${shared.content}</div>`;
+        }
+    } else {
+        contentHTML = `<div class="kholwa-content">${shared.content}</div>`;
+    }
+
+    teacherKholwa.innerHTML = `
+        <div class="kholwa-card">
+            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 15px;">${shared.title || 'خلوة اليوم'}</h3>
+            <div class="kholwa-body">
+                ${contentHTML}
+            </div>
+            ${shared.question && shared.question.text ? `
+                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <h4 style="color: #e74c3c; margin-bottom: 10px;">سؤال اليوم:</h4>
+                    <p><strong>${shared.question.text}</strong></p>
+                    <div style="margin-top: 10px;">
+                        ${shared.question.options.map((option, index) => `
+                            <div style="padding: 8px; margin: 5px 0; background: white; border-radius: 6px; border: 1px solid #ddd;">
+                                ${index + 1}. ${option} ${index === shared.question.correctIndex ? '✅' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
 }
 
 function addStudents() {
@@ -272,10 +353,11 @@ function addStudents() {
     LS.set('students', students);
     document.getElementById('studentNames').value = '';
     alert('تم إضافة الطلاب بنجاح');
+    loadTeacherStatus(cls);
 }
 
 // ============================================
-// نظام الطفل
+// نظام الطفل - معدل بالكامل
 // ============================================
 
 function enterKholwa() {
@@ -324,13 +406,32 @@ async function showKholwaFor(name, cls) {
         else contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
     } else contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
 
-    document.getElementById('kholwaContent').innerHTML = `<div class="kholwa-card"><h3 style="color: #2c3e50; text-align: center; margin-bottom: 15px;">${kh.title || 'خلوة اليوم'}</h3><div class="kholwa-body">${contentHTML}</div></div>`;
+    // عرض نقاط الطفل الحالية
+    const currentPoints = getStudentPoints(cls, name);
+    const pointsDisplay = `<div style="text-align: center; margin: 10px 0; padding: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 10px;">
+        <div style="font-size: 1.2rem; font-weight: bold;">🎯 رصيدك الحالي: ${currentPoints} نقطة</div>
+    </div>`;
+
+    document.getElementById('kholwaContent').innerHTML = `
+        ${pointsDisplay}
+        <div class="kholwa-card">
+            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 15px;">${kh.title || 'خلوة اليوم'}</h3>
+            <div class="kholwa-body">
+                ${contentHTML}
+            </div>
+        </div>
+    `;
 
     const questionArea = document.getElementById('questionArea');
     const choicesArea = document.getElementById('choicesArea');
     const resultArea = document.getElementById('resultArea');
     
-    if (kh.question && kh.question.text) {
+    // التحقق إذا كان الطفل قد أجاب اليوم
+    const answeredToday = LS.get('answeredToday') || {};
+    const todayKey = `${todayDate()}_${cls}_${name}`;
+    const hasAnsweredToday = answeredToday[todayKey];
+
+    if (kh.question && kh.question.text && !hasAnsweredToday) {
         questionArea.innerHTML = `<h4 style="color: #e74c3c; margin-top: 20px;">سؤال اليوم:</h4><p>${kh.question.text}</p>`;
         let choicesHTML = '<div style="margin-top: 15px;">';
         kh.question.options.forEach((option, index) => {
@@ -340,7 +441,13 @@ async function showKholwaFor(name, cls) {
         });
         choicesHTML += '</div>';
         choicesArea.innerHTML = choicesHTML;
-    } else { questionArea.innerHTML = ''; choicesArea.innerHTML = ''; }
+    } else if (hasAnsweredToday) {
+        questionArea.innerHTML = '<div style="text-align: center; padding: 20px; background: #e8f4fd; border-radius: 10px; margin: 20px 0;"><h4 style="color: #27ae60;">✅ لقد أجبت على سؤال اليوم بالفعل!</h4><p>يمكنك العودة غداً للإجابة على السؤال الجديد</p></div>';
+        choicesArea.innerHTML = '';
+    } else {
+        questionArea.innerHTML = '';
+        choicesArea.innerHTML = '';
+    }
     resultArea.innerHTML = '';
 }
 
@@ -348,17 +455,61 @@ function handleAnswerSelection(selectedIndex, studentName, studentClass) {
     fetchShared().then(shared => {
         const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
         if (!kh || !kh.question) return;
+
+        // التحقق إذا كان الطفل قد أجاب اليوم
+        const answeredToday = LS.get('answeredToday') || {};
+        const todayKey = `${todayDate()}_${studentClass}_${studentName}`;
+        if (answeredToday[todayKey]) {
+            document.getElementById('resultArea').innerHTML = '<div style="color: #e67e22; font-weight: bold; text-align: center; padding: 15px; background: #fef9e7; border-radius: 8px; margin: 10px 0;">⚠️ لقد أجبت على سؤال اليوم بالفعل!</div>';
+            return;
+        }
+
         const isCorrect = selectedIndex === kh.question.correctIndex;
         const resultArea = document.getElementById('resultArea');
+        
         if (isCorrect) {
-            resultArea.innerHTML = '<div style="color: #27ae60; font-weight: bold; text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; margin: 10px 0;">✅ إجابة صحيحة! أحسنت!</div>';
-            awardPoints(studentName, studentClass, 10);
+            // منح النقاط فقط إذا كانت الإجابة صحيحة ولم يسبق الإجابة اليوم
+            answeredToday[todayKey] = true;
+            LS.set('answeredToday', answeredToday);
+            
+            const pointsEarned = 10;
+            const currentPoints = getStudentPoints(studentClass, studentName);
+            const newPoints = currentPoints + pointsEarned;
+            
+            resultArea.innerHTML = `
+                <div style="color: #27ae60; font-weight: bold; text-align: center; padding: 15px; background: #d4edda; border-radius: 8px; margin: 10px 0;">
+                    ✅ إجابة صحيحة! أحسنت!<br>
+                    <div style="margin-top: 10px;">
+                        <span style="background: #ffd700; color: #000; padding: 4px 12px; border-radius: 15px; font-weight: 700;">
+                            تم إضافة ${pointsEarned} نقاط
+                        </span><br>
+                        <span style="font-size: 1.1rem; margin-top: 5px; display: inline-block;">
+                            رصيدك الحالي: ${newPoints} نقطة
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            awardPoints(studentName, studentClass, pointsEarned);
         } else {
             resultArea.innerHTML = '<div style="color: #e74c3c; font-weight: bold; text-align: center; padding: 15px; background: #f8d7da; border-radius: 8px; margin: 10px 0;">❌ إجابة خاطئة، حاول مرة أخرى!</div>';
         }
-        document.querySelectorAll('.answer-option').forEach(btn => { btn.disabled = true; btn.style.background = '#f8f9fa'; btn.style.cursor = 'not-allowed'; btn.style.opacity = '0.7'; });
+        
+        // تعطيل جميع أزرار الإجابة
+        document.querySelectorAll('.answer-option').forEach(btn => { 
+            btn.disabled = true; 
+            btn.style.background = '#f8f9fa'; 
+            btn.style.cursor = 'not-allowed'; 
+            btn.style.opacity = '0.7'; 
+        });
+
+        // تمييز الإجابة الصحيحة
         const correctBtn = document.querySelectorAll('.answer-option')[kh.question.correctIndex];
-        if (correctBtn) { correctBtn.style.background = '#27ae60'; correctBtn.style.color = 'white'; correctBtn.style.borderColor = '#27ae60'; }
+        if (correctBtn) { 
+            correctBtn.style.background = '#27ae60'; 
+            correctBtn.style.color = 'white'; 
+            correctBtn.style.borderColor = '#27ae60'; 
+        }
     });
 }
 
@@ -379,16 +530,26 @@ function updateTodayAnswers(studentName, studentClass, points) {
         let todayIndex = history.findIndex(day => day.date === todayDate());
         let today;
         if (todayIndex === -1) {
-            today = { date: todayDate(), title: 'خلوة اليوم', startISO: new Date().toISOString(), endISO: new Date().toISOString(), answers: { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] }, qaResponses: { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} } };
+            today = { 
+                date: todayDate(), 
+                title: 'خلوة اليوم', 
+                startISO: new Date().toISOString(), 
+                endISO: new Date().toISOString(), 
+                answers: { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] }, 
+                qaResponses: { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} } 
+            };
             history.push(today);
             todayIndex = history.length - 1;
         } else today = history[todayIndex];
+        
         if (!today.answers) today.answers = { '1': [], '2': [], '3': [], '4': [], '5': [], '6': [] };
         if (!today.qaResponses) today.qaResponses = { '1': {}, '2': {}, '3': {}, '4': {}, '5': {}, '6': {} };
         if (!today.answers[studentClass]) today.answers[studentClass] = [];
         if (!today.qaResponses[studentClass]) today.qaResponses[studentClass] = {};
+        
         if (!today.answers[studentClass].includes(studentName)) today.answers[studentClass].push(studentName);
         today.qaResponses[studentClass][studentName] = points;
+        
         LS.set('history', history);
     } catch (error) { console.error('خطأ في تحديث التاريخ:', error); }
 }
@@ -414,7 +575,14 @@ function getStudentPhoto(cls, name) {
 
 function addNotification(title, message, type = 'info') {
     const notifications = LS.get('notifications') || [];
-    const notification = { id: Date.now(), title: title, message: message, type: type, date: new Date().toLocaleString('ar-EG'), read: false };
+    const notification = { 
+        id: Date.now(), 
+        title: title, 
+        message: message, 
+        type: type, 
+        date: new Date().toLocaleString('ar-EG'), 
+        read: false 
+    };
     notifications.unshift(notification);
     LS.set('notifications', notifications.slice(0, 50));
     updateNotifications();
@@ -431,9 +599,32 @@ function showNotificationsPanel() {
     const notifications = LS.get('notifications') || [];
     let notificationsHTML = '<h3>🔔 الإشعارات</h3>';
     if (notifications.length === 0) notificationsHTML += '<p class="note">لا توجد إشعارات</p>';
-    else notifications.forEach(notif => { notificationsHTML += `<div class="notification-item"><strong>${notif.title}</strong><br><small>${notif.message}</small><br><small style="color:#666">${notif.date}</small></div>`; });
+    else notifications.forEach(notif => { 
+        notificationsHTML += `
+            <div class="notification-item">
+                <strong>${notif.title}</strong><br>
+                <small>${notif.message}</small><br>
+                <small style="color:#666">${notif.date}</small>
+            </div>
+        `; 
+    });
     const w = window.open('', '_blank', 'width=400,height=500');
-    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>الإشعارات</title><style>body { font-family: Arial; margin: 20px; background: #f8f9fa; }.notification-item { background: white; padding: 12px; margin: 8px 0; border-radius: 8px; }</style></head><body>${notificationsHTML}<button onclick="window.close()" style="margin-top: 20px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer;">إغلاق</button></body></html>`);
+    w.document.write(`
+        <html dir="rtl">
+            <head>
+                <meta charset="utf-8">
+                <title>الإشعارات</title>
+                <style>
+                    body { font-family: Arial; margin: 20px; background: #f8f9fa; }
+                    .notification-item { background: white; padding: 12px; margin: 8px 0; border-radius: 8px; }
+                </style>
+            </head>
+            <body>
+                ${notificationsHTML}
+                <button onclick="window.close()" style="margin-top: 20px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer;">إغلاق</button>
+            </body>
+        </html>
+    `);
 }
 
 // ============================================
@@ -443,233 +634,49 @@ function showNotificationsPanel() {
 function showLeaderboard() {
     const students = LS.get('students') || {};
     let allStudents = [];
-    Object.keys(students).forEach(cls => { students[cls].forEach(student => { allStudents.push({ name: student.name, class: cls, points: getStudentPoints(cls, student.name) }); }); });
+    Object.keys(students).forEach(cls => { 
+        students[cls].forEach(student => { 
+            allStudents.push({ 
+                name: student.name, 
+                class: cls, 
+                points: getStudentPoints(cls, student.name) 
+            }); 
+        }); 
+    });
     allStudents.sort((a, b) => b.points - a.points);
+    
     let leaderboardHTML = '<h2>🏆 لوحة المتصدرين</h2>';
     if (allStudents.length === 0) leaderboardHTML += '<p>لا توجد بيانات بعد</p>';
-    else allStudents.slice(0, 10).forEach((student, index) => { let medal = ''; if (index === 0) medal = ' 🥇'; else if (index === 1) medal = ' 🥈'; else if (index === 2) medal = ' 🥉'; leaderboardHTML += `<div style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #ddd;"><div style="font-size: 1.2rem; font-weight: 800; min-width: 30px;">${index + 1}</div><div style="flex: 1;"><div style="font-weight: 700;">${student.name} ${medal}</div><div style="color: #666; font-size: 0.9rem;">الفصل: ${student.class} | النقاط: ${student.points}</div></div></div>`; });
-    const w = window.open('', '_blank', 'width=400,height=600');
-    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>لوحة المتصدرين</title><style>body { font-family: Arial; margin: 20px; background: #fffaf2; }</style></head><body>${leaderboardHTML}<button onclick="window.close()" style="margin-top: 20px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer;">إغلاق</button></body></html>`);
-}
-
-// ============================================
-// الدوال المساعدة
-// ============================================
-
-async function refreshHistoryList() {
-    const history = LS.get('history') || [];
-    const container = document.getElementById('historyList');
-    if (!container) return;
-    if (!history.length) { container.innerHTML = '<p class="note">لا توجد أيام سابقة</p>'; return; }
-    let html = '';
-    history.forEach((d, idx) => { let dayPoints = 0; if (d.qaResponses) { Object.values(d.qaResponses).forEach(classResponses => { Object.values(classResponses).forEach(points => { dayPoints += points; }); }); } html += `<div style="padding:6px;border-bottom:1px solid #efe8d8"><strong>${d.date}</strong> — ${d.title || 'خلوة'}<br><small>إجمالي النقاط: ${dayPoints}</small><br><button onclick="showDayDetails(${idx})" style="margin-top:6px;padding:6px;border-radius:8px;background:#eee;border:none;cursor:pointer">تفاصيل اليوم</button></div>`; });
-    container.innerHTML = html;
-}
-
-async function loadReport() {
-    const students = LS.get('students') || {};
-    const container = document.getElementById('reportArea');
-    if (!container) return;
-    let html = '<table class="table"><tr><th>الفصل</th><th>الاسم</th><th>النقاط</th></tr>';
-    Object.keys(students).forEach(cls => { students[cls].forEach(s => { const points = getStudentPoints(cls, s.name); html += `<tr><td>${cls}</td><td>${s.name}</td><td><strong>${points}</strong></td></tr>`; }); });
-    html += '</table>';
-    container.innerHTML = html;
-}
-
-function loadTeacherStatus(cls) {
-    const students = LS.get('students') || {};
-    const list = students[cls] || [];
-    const container = document.getElementById('teacherStatus');
-    if (!container) return;
-    let html = '<h4>طلاب الفصل وحالة النقاط:</h4>';
-    list.forEach(s => { const points = getStudentPoints(cls, s.name); html += `<div style="padding:8px; border-bottom:1px solid #eee;"><strong>${s.name}</strong> - النقاط: <span style="color: #e74c3c; font-weight: bold;">${points}</span></div>`; });
-    container.innerHTML = html;
-}
-
-// ============================================
-// دوال التقارير والإحصائيات
-// ============================================
-
-function showAnalytics() {
-    const students = LS.get('students') || {};
-    const history = LS.get('history') || [];
-    let totalStudents = 0; let totalPoints = 0; let classDistribution = { '1':0, '2':0, '3':0, '4':0, '5':0, '6':0 }; let classPoints = { '1':0, '2':0, '3':0, '4':0, '5':0, '6':0 };
-    Object.keys(students).forEach(cls => { classDistribution[cls] = students[cls].length; totalStudents += students[cls].length; students[cls].forEach(student => { const points = getStudentPoints(cls, student.name); totalPoints += points; classPoints[cls] += points; }); });
-    const avgPoints = totalStudents > 0 ? Math.round(totalPoints / totalStudents) : 0;
-    const totalDays = history.length;
-    let historyPoints = 0; history.forEach(day => { if (day.qaResponses) { Object.values(day.qaResponses).forEach(classResponses => { Object.values(classResponses).forEach(points => { historyPoints += points; }); }); } });
-
-    const analyticsHTML = `<h3 style="text-align: center; color: #2c3e50;">📊 الإحصائيات العامة</h3><div class="stats-grid"><div class="stat-card"><div class="stat-number">${totalStudents}</div><div class="stat-label">إجمالي الطلاب</div></div><div class="stat-card"><div class="stat-number">${totalDays}</div><div class="stat-label">عدد الخلوات</div></div><div class="stat-card"><div class="stat-number">${totalPoints}</div><div class="stat-label">إجمالي النقاط</div></div><div class="stat-card"><div class="stat-number">${avgPoints}</div><div class="stat-label">متوسط النقاط</div></div></div><div class="chart-container"><h4>📈 توزيع الطلاب على الفصول</h4>${Object.keys(classDistribution).map(cls => { const percentage = totalStudents > 0 ? ((classDistribution[cls] / totalStudents) * 100).toFixed(1) : 0; const classPointsTotal = classPoints[cls] || 0; return `<div style="margin: 12px 0;"><div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><strong>الفصل ${cls}:</strong><span>${classDistribution[cls]} طالب - ${classPointsTotal} نقطة</span></div><div style="background:#e0e0e0; border-radius:10px; height:20px; overflow:hidden;"><div style="background:linear-gradient(90deg, #3498db, #2980b9); height:100%; border-radius:10px; width:${percentage}%"></div></div></div>`; }).join('')}</div><div class="chart-container"><h4>🏆 أعلى 5 طلاب في النقاط</h4>${getTopStudents(5).map((student, index) => { let medal = ''; if (index === 0) medal = '🥇'; else if (index === 1) medal = '🥈'; else if (index === 2) medal = '🥉'; return `<div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee;"><div style="display: flex; align-items: center; gap: 10px;"><span style="font-size: 1.2rem;">${medal}</span><div><strong>${student.name}</strong><div style="color: #666; font-size: 0.8rem;">الفصل ${student.class}</div></div></div><div style="background: #ffd700; color: #000; padding: 4px 12px; border-radius: 15px; font-weight: 700;">${student.points} نقطة</div></div>`; }).join('')}</div><div class="chart-container"><h4>📋 ملخص النقاط</h4><div style="background: #e8f4fd; padding: 15px; border-radius: 8px;"><div style="display: flex; justify-content: space-between; margin: 5px 0;"><strong>النقاط من studentPoints:</strong><span>${totalPoints}</span></div><div style="display: flex; justify-content: space-between; margin: 5px 0;"><strong>النقاط من history:</strong><span>${historyPoints}</span></div><div style="display: flex; justify-content: space-between; margin: 5px 0; border-top: 1px solid #3498db; padding-top: 8px;"><strong>المجموع:</strong><span style="font-weight: bold; color: #e74c3c;">${totalPoints + historyPoints}</span></div></div></div>`;
+    else allStudents.slice(0, 10).forEach((student, index) => { 
+        let medal = ''; 
+        if (index === 0) medal = ' 🥇'; 
+        else if (index === 1) medal = ' 🥈'; 
+        else if (index === 2) medal = ' 🥉'; 
+        leaderboardHTML += `
+            <div style="display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #ddd;">
+                <div style="font-size: 1.2rem; font-weight: 800; min-width: 30px;">${index + 1}</div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 700;">${student.name} ${medal}</div>
+                    <div style="color: #666; font-size: 0.9rem;">الفصل: ${student.class} | النقاط: ${student.points}</div>
+                </div>
+            </div>
+        `; 
+    });
     
-    const w = window.open('', '_blank', 'width=500,height=700');
-    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>التقارير والإحصائيات</title><style>body { font-family: 'Cairo', Arial; margin: 20px; background: #f8f9fa; line-height: 1.6; }.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }.stat-card { background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; }.stat-number { font-size: 1.8rem; font-weight: 800; color: #2c3e50; margin-bottom: 5px; }.stat-label { font-size: 0.85rem; color: #7f8c8d; }.chart-container { background: white; padding: 20px; border-radius: 12px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; } h4 { color: #2c3e50; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #3498db; padding-bottom: 8px; }</style></head><body>${analyticsHTML}<button onclick="window.close()" style="margin-top: 20px; padding: 12px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 1rem;">إغلاق</button></body></html>`);
+    const w = window.open('', '_blank', 'width=400,height=600');
+    w.document.write(`
+        <html dir="rtl">
+            <head>
+                <meta charset="utf-8">
+                <title>لوحة المتصدرين</title>
+                <style>
+                    body { font-family: Arial; margin: 20px; background: #fffaf2; }
+                </style>
+            </head>
+            <body>
+                ${leaderboardHTML}
+                <button onclick="window.close()" style="margin-top: 20px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer;">إغلاق</button>
+            </body>
+        </html>
+    `);
 }
-
-function getTopStudents(limit = 5) {
-    const students = LS.get('students') || {};
-    let allStudents = [];
-    Object.keys(students).forEach(cls => { students[cls].forEach(student => { allStudents.push({ name: student.name, class: cls, points: getStudentPoints(cls, student.name) }); }); });
-    return allStudents.sort((a, b) => b.points - a.points).slice(0, limit);
-}
-
-// ============================================
-// دوال تفاصيل اليوم
-// ============================================
-
-function showDayDetails(index) {
-    const history = LS.get('history') || [];
-    const day = history[index];
-    if (!day) { alert('❌ لا توجد بيانات لهذا اليوم'); return; }
-    const students = LS.get('students') || {};
-    let html = `<h3 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">📅 تفاصيل اليوم: ${day.date}</h3><h4 style="color: #7f8c8d; text-align: center;">${day.title || 'خلوة'}</h4><div style="background: #e8f4fd; padding: 15px; border-radius: 10px; margin: 15px 0;"><strong>⏰ وقت الخلوة:</strong><br>البداية: ${new Date(day.startISO).toLocaleString('ar-EG')}<br>النهاية: ${new Date(day.endISO).toLocaleString('ar-EG')}</div>`;
-    let totalParticipants = 0; let totalDayPoints = 0;
-    Object.keys(day.answers || {}).forEach(cls => { totalParticipants += (day.answers[cls] || []).length; });
-    if (day.qaResponses) { Object.values(day.qaResponses).forEach(classResponses => { Object.values(classResponses).forEach(points => { totalDayPoints += points; }); }); }
-    html += `<div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin: 10px 0;"><strong>📊 إحصائيات المشاركة:</strong><br>إجمالي المشاركين: ${totalParticipants} طالب<br>النقاط المكتسبة: ${totalDayPoints} نقطة</div>`;
-    Object.keys(day.answers || {}).forEach(cls => { const classStudents = day.answers[cls] || []; if (classStudents.length > 0) { html += `<div class="class-section"><h4 style="color: #3498db; background: #f8f9fa; padding: 10px; border-radius: 8px;">🎒 الفصل ${cls} - ${classStudents.length} طالب</h4><div style="max-height: 200px; overflow-y: auto;">`; const list = students[cls] || []; list.forEach(student => { const participated = classStudents.includes(student.name); const dayPoints = (day.qaResponses && day.qaResponses[cls] && day.qaResponses[cls][student.name]) ? day.qaResponses[cls][student.name] : 0; const totalPoints = getStudentPoints(cls, student.name); html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;"><div><span style="color: ${participated ? '#27ae60' : '#e74c3c'}; font-weight: bold;">${participated ? '✅' : '❌'}</span>${student.name}</div><div style="color: #666; font-size: 0.9rem;">${participated ? `نقاط اليوم: ${dayPoints} | الإجمالي: ${totalPoints}` : 'لم يشارك'}</div></div>`; }); html += `</div></div>`; } });
-    const w = window.open('', '_blank', 'width=500,height=600');
-    w.document.write(`<html dir="rtl"><head><meta charset="utf-8"><title>تفاصيل اليوم - ${day.date}</title><style>body { font-family: 'Cairo', Arial; margin: 20px; background: #f8f9fa; line-height: 1.6; }.class-section { background: white; padding: 15px; border-radius: 10px; margin: 15px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); } h4 { margin: 0 0 10px 0; }</style></head><body>${html}<button onclick="window.close()" style="margin-top: 20px; padding: 10px; width: 100%; background: #d9b382; border: none; border-radius: 8px; cursor: pointer; font-weight: 700;">إغلاق</button></body></html>`);
-}
-
-// ============================================
-// دوال النسخ الاحتياطي
-// ============================================
-
-function createManualBackup() {
-    try {
-        const backupData = { students: LS.get('students'), points: LS.get('studentPoints'), photos: LS.get('studentPhotos'), history: LS.get('history'), teachers: LS.get('teachers'), notifications: LS.get('notifications'), timestamp: new Date().toISOString(), version: '1.0' };
-        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup-kholwa-${todayDate()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        alert('✅ تم إنشاء نسخة احتياطية بنجاح!');
-        addNotification('نسخ احتياطي', 'تم إنشاء نسخة احتياطية يدوية', 'success');
-    } catch (error) { alert('❌ حدث خطأ أثناء إنشاء النسخة الاحتياطية'); }
-}
-
-// ============================================
-// دوال تصفير البيانات
-// ============================================
-
-function resetAll() {
-    if (confirm('⚠️ هل أنت متأكد من تصفير جميع البيانات؟\n\nهذا الإجراء سيحذف:\n• جميع الطلاب\n• جميع النقاط\n• جميع الصور\n• جميع الخلوات\n• جميع الخدام\n• جميع الإشعارات\n\n❗ هذا الإجراء لا يمكن التراجع عنه.')) {
-        if (confirm('❌ التأكيد النهائي:\nهل أنت متأكد تماماً من حذف جميع البيانات؟')) {
-            try {
-                const autoBackupData = { students: LS.get('students'), points: LS.get('studentPoints'), photos: LS.get('studentPhotos'), history: LS.get('history'), teachers: LS.get('teachers'), timestamp: new Date().toISOString(), note: 'نسخة احتياطية تلقائية قبل التصفير' };
-                const blob = new Blob([JSON.stringify(autoBackupData, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `auto-backup-before-reset-${todayDate()}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                localStorage.clear();
-                initializeData();
-                alert('✅ تم تصفير جميع البيانات بنجاح!');
-                setTimeout(() => { location.reload(); }, 2000);
-            } catch (error) { alert('❌ حدث خطأ أثناء تصفير البيانات'); }
-        }
-    }
-}
-
-// ============================================
-// دوال الوسائط المتعددة المكملة
-// ============================================
-
-function initCamera() {
-    const cameraPreview = document.getElementById('cameraPreview');
-    if (!cameraPreview) return;
-    cameraPreview.innerHTML = '<div class="media-status info">جاري تشغيل الكاميرا الخلفية...</div>';
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const constraints = { video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } };
-        navigator.mediaDevices.getUserMedia(constraints).then(stream => {
-            cameraPreview.innerHTML = `<video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px; transform: scaleX(-1);"></video><button type="button" class="capture-btn" onclick="captureImage()">📸 التقاط صورة</button>`;
-            const video = document.getElementById('cameraVideo');
-            video.srcObject = stream;
-        }).catch(err => {
-            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-                cameraPreview.innerHTML = `<video id="cameraVideo" autoplay playsinline style="width:100%; max-width:100%; border-radius:8px;"></video><button type="button" class="capture-btn" onclick="captureImage()">📸 التقاط صورة</button><div class="media-status info" style="margin-top:10px;">📱 يتم استخدام الكاميرا الأمامية</div>`;
-                const video = document.getElementById('cameraVideo');
-                video.srcObject = stream;
-            }).catch(err => {
-                cameraPreview.innerHTML = `<div class="media-status error">❌ لا يمكن الوصول للكاميرا<br><small>تأكد من منح الإذن للكاميرا في إعدادات المتصفح</small></div><div style="margin-top:10px;"><button class="btn" style="background:#3498db; color:white;" onclick="initCamera()">🔄 حاول مرة أخرى</button></div>`;
-            });
-        });
-    } else cameraPreview.innerHTML = `<div class="media-status error">❌ المتصفح لا يدعم الكاميرا<br><small>جرب استخدام Chrome أو Firefox على الموبايل</small></div>`;
-}
-
-function captureImage() {
-    const video = document.getElementById('cameraVideo');
-    if (!video) { alert('❌ لم يتم تحميل الكاميرا بعد'); return; }
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    if (video.style.transform === 'scaleX(-1)') { context.translate(canvas.width, 0); context.scale(-1, 1); }
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(blob => {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            document.getElementById('kholwaText').value = `![صورة من الكاميرا](${e.target.result})`;
-            document.getElementById('cameraPreview').innerHTML = `<div class="media-status success">✅ تم التقاط الصورة بنجاح!</div><img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="الصورة الملتقطة"><div style="margin-top:10px;"><button class="btn" style="background:#3498db; color:white;" onclick="initCamera()">📷 التقاط صورة أخرى</button></div>`;
-            const stream = video.srcObject;
-            if (stream) stream.getTracks().forEach(track => track.stop());
-        };
-        reader.readAsDataURL(blob);
-    }, 'image/jpeg', 0.8);
-}
-
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    if (currentMediaType === 'image' && !file.type.startsWith('image/')) { alert('❌ يرجى اختيار ملف صورة فقط'); return; }
-    const reader = new FileReader();
-    reader.onload = function (e) {
-        if (currentMediaType === 'image') {
-            document.getElementById('kholwaText').value = `![${file.name}](${e.target.result})`;
-            document.getElementById('fileInput').innerHTML += `<div class="media-status success">✅ تم رفع الصورة بنجاح!</div><img src="${e.target.result}" style="max-width:100%; border-radius:8px; margin-top:10px;" alt="${file.name}">`;
-        } else if (currentMediaType === 'pdf') {
-            document.getElementById('kholwaText').value = `[📎 ${file.name}](${e.target.result})`;
-            document.getElementById('fileInput').innerHTML += `<div class="media-status success">✅ تم رفع ملف PDF بنجاح!</div><div class="file-info"><div class="file-icon">📄</div><div class="file-details"><div class="file-name">${file.name}</div><div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div></div></div>`;
-        } else if (currentMediaType === 'word') {
-            document.getElementById('kholwaText').value = `[📋 ${file.name}](${e.target.result})`;
-            document.getElementById('fileInput').innerHTML += `<div class="media-status success">✅ تم رفع ملف Word بنجاح!</div><div class="file-info"><div class="file-icon">📋</div><div class="file-details"><div class="file-name">${file.name}</div><div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div></div></div>`;
-        }
-    };
-    reader.readAsDataURL(file);
-}
-
-function handlePaste(event) {
-    event.preventDefault();
-    const pastedText = event.clipboardData.getData('text');
-    document.getElementById('pasteContent').value = pastedText;
-    document.getElementById('kholwaText').value = pastedText;
-    const successMsg = document.createElement('div');
-    successMsg.className = 'media-status success';
-    successMsg.textContent = '✅ تم لصق النص بنجاح!';
-    document.getElementById('pasteInput').appendChild(successMsg);
-    setTimeout(() => { if (successMsg.parentNode) successMsg.remove(); }, 3000);
-}
-
-function getMediaTypeName(type) {
-    const names = { 'text': 'نص', 'paste': 'نص منسوخ', 'camera': 'صورة كاميرا', 'image': 'صورة', 'pdf': 'PDF', 'word': 'Word' };
-    return names[type] || type;
-}
-
-// ============================================
-// التهيئة النهائية
-// ============================================
-
-document.addEventListener('DOMContentLoaded', function () {
-    initializeData();
-    updateNotifications();
-    console.log('تم تحميل البرنامج بنجاح!');
-    if (document.getElementById('textInput')) document.getElementById('textInput').style.display = 'block';
-});

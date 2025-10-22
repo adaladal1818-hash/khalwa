@@ -1258,3 +1258,61 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('جميع الدوال جاهزة للاستخدام!');
 });
+// أضف هذه الدالة في نهاية الملف للمساعدة في التصحيح
+function debugTeacherView() {
+    console.log('=== تصحيح عرض الخلوة للخادم ===');
+    
+    const teachers = LS.get('teachers') || [];
+    const loggedInTeacher = teachers.find(t => t.loggedIn);
+    
+    console.log('الخادم المسجل:', loggedInTeacher);
+    console.log('عنصر teacherKholwa:', document.getElementById('teacherKholwa'));
+    console.log('بيانات الخلوة:', LS.get('kholwa'));
+    
+    if (loggedInTeacher) {
+        showKholwaForTeacher(loggedInTeacher.classId);
+    } else {
+        console.log('لا يوجد خادم مسجل دخول');
+    }
+}
+
+// وأضف زر التصحيح في HTML في قسم الخدام
+function addDebugButton() {
+    const teacherPanel = document.getElementById('teacherPanel');
+    if (teacherPanel && !document.getElementById('debugBtn')) {
+        const debugBtn = document.createElement('button');
+        debugBtn.id = 'debugBtn';
+        debugBtn.className = 'btn';
+        debugBtn.style.background = '#e67e22';
+        debugBtn.style.color = 'white';
+        debugBtn.style.marginTop = '10px';
+        debugBtn.innerHTML = '🐛 تصحيح العرض';
+        debugBtn.onclick = debugTeacherView;
+        teacherPanel.appendChild(debugBtn);
+    }
+}
+
+// واستدع هذه الدالة في teacherLogin
+function teacherLogin() {
+    const u = document.getElementById('loginUser').value.trim();
+    const p = document.getElementById('loginPass').value.trim();
+    const teachers = LS.get('teachers') || [];
+    const found = teachers.find(t => t.username === u && t.password === p);
+    if (!found) return alert('بيانات دخول خاطئة');
+    
+    // تسجيل دخول الخادم
+    teachers.forEach(t => t.loggedIn = false);
+    found.loggedIn = true;
+    LS.set('teachers', teachers);
+    
+    document.getElementById('teacherLoginBox').style.display = 'none';
+    document.getElementById('teacherPanel').style.display = 'block';
+    document.getElementById('teacherClass').innerText = found.classId;
+    
+    // عرض الخلوة الحالية للخادم
+    showKholwaForTeacher(found.classId);
+    loadTeacherStatus(found.classId);
+    
+    // إضافة زر التصحيح
+    setTimeout(addDebugButton, 1000);
+}

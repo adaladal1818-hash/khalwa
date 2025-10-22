@@ -45,6 +45,14 @@
     </div>
 
     <div id="adminPanel" style="display:none">
+      <!-- إعدادات GitHub -->
+      <div style="background: #e8f4fd; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-right: 4px solid #3498db;">
+        <h4 style="color: #3498db; margin-bottom: 10px;">⚙️ إعدادات النشر التلقائي</h4>
+        <p class="note" style="margin-bottom: 10px;">إعداد GitHub للنشر التلقائي (اختياري)</p>
+        <button class="btn" style="background: #9b59b6; color: white;" onclick="setupGitHub()">🔗 إعداد GitHub</button>
+        <button class="btn" style="background: #34495e; color: white;" onclick="showGitHubHelp()">❓ مساعدة</button>
+      </div>
+
       <label>عنوان الخلوة:</label>
       <input id="dayTitle" class="input" placeholder="عنوان اليوم">
       
@@ -111,8 +119,8 @@
       </select>
       
       <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-red" id="publishBtn" onclick="publishKholwa()">نشر الخلوة</button>
-          <button class="btn" id="closeNowBtn" style="background:#ffa500;color:#fff" onclick="closeNow()">غلق الآن</button>
+          <button class="btn btn-red" id="publishBtn" onclick="publishKholwa()">🚀 نشر الخلوة</button>
+          <button class="btn" id="closeNowBtn" style="background:#ffa500;color:#fff" onclick="closeNow()">⏹️ غلق الآن</button>
       </div>
 
       <hr>
@@ -133,7 +141,7 @@
           <option value="6">6</option>
       </select>
       
-      <button class="btn btn-red" id="createTeacherBtn" onclick="createTeacher()">إنشاء خادم</button>
+      <button class="btn btn-red" id="createTeacherBtn" onclick="createTeacher()">➕ إنشاء خادم</button>
 
       <hr>
       <h4>الأيام السابقة</h4>
@@ -149,7 +157,7 @@
       
       <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn" style="background:#e67e22;color:white" onclick="showNotificationsPanel()">🔔 الإشعارات</button>
-          <button class="btn" id="resetBtn" style="background:#f04d4d;color:white" onclick="resetAll()">تصفير البيانات</button>
+          <button class="btn" id="resetBtn" style="background:#f04d4d;color:white" onclick="resetAll()">🗑️ تصفير البيانات</button>
       </div>
       
       <div class="back-btn" onclick="goHome()">🔙 عوده</div>
@@ -174,9 +182,12 @@
     <div id="teacherPanel" style="display:none">
       <h4>طلاب الفصل <span id="teacherClass" class="note"></span></h4>
       
+      <!-- عرض الخلوة للخدام -->
+      <div id="teacherKholwa" style="margin-bottom: 20px;"></div>
+      
       <label>أضف أسماء الطلاب (افصل بفاصلة):</label>
       <textarea id="studentNames" class="input" rows="3" placeholder="مثال: أحمد, محمد, فاطمة"></textarea>
-      <button class="btn btn-blue" id="addStudentsBtn" onclick="addStudents()">إضافة الطلاب</button>
+      <button class="btn btn-blue" id="addStudentsBtn" onclick="addStudents()">➕ إضافة الطلاب</button>
       
       <div id="teacherDashboard"></div>
       
@@ -201,7 +212,7 @@
         <option value="6">6</option>
       </select>
       
-      <button class="btn btn-green" id="enterKholwaBtn" onclick="enterKholwa()">فتح الخلوة</button>
+      <button class="btn btn-green" id="enterKholwaBtn" onclick="enterKholwa()">🚪 فتح الخلوة</button>
       
       <div class="small note">
         لو ظهر "الخلوة مغلقة" تأكد أن المسؤول رفع ملف <code>data.json</code> على الاستضافة.
@@ -221,4 +232,4 @@
 </div>
 <script src="script.js"></script>
 </body>
-      </html>
+  </html>

@@ -2,24 +2,16 @@
 // الدوال الأساسية للبرنامج
 // ============================================
 
-const SHARED = 'data.json';
+const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/USERNAME/REPO_NAME/main/data.json';
+const GITHUB_API_URL = 'https://api.github.com/repos/USERNAME/REPO_NAME/contents/data.json';
 
-async function fetchShared() {
-    const fallbackData = { 
-        kholwa: LS.get('kholwa'), 
-        history: LS.get('history') || [],
-        source: 'local'
-    };
-    
-    try {
-        const response = await fetch(SHARED + '?t=' + Date.now());
-        if (!response.ok) throw new Error(`خطأ في السيرفر: ${response.status}`);
-        const data = await response.json();
-        return { ...data, source: 'server' };
-    } catch (error) {
-        return fallbackData;
-    }
-}
+// إعدادات GitHub - سيتم تعبئتها تلقائياً
+let GITHUB_CONFIG = {
+    token: '',
+    username: '',
+    repo: '',
+    branch: 'main'
+};
 
 const LS = {
     get(k) {
@@ -40,6 +32,13 @@ function initializeData() {
     if (!LS.get('notifications')) LS.set('notifications', []);
     if (!LS.get('studentMessages')) LS.set('studentMessages', {});
     if (!LS.get('answeredToday')) LS.set('answeredToday', {});
+    
+    // تحميل إعدادات GitHub من localStorage
+    const savedConfig = LS.get('github_config');
+    if (savedConfig) {
+        GITHUB_CONFIG = { ...GITHUB_CONFIG, ...savedConfig };
+        updateGitHubUrls();
+    }
 }
 
 initializeData();
@@ -54,6 +53,15 @@ function showPanel(id) {
     });
     updateMainInfo();
     updateNotifications();
+    
+    // إذا كانت لوحة الخدام، عرض الخلوة لهم أيضاً
+    if (id === 'teacher') {
+        const teachers = LS.get('teachers') || [];
+        const loggedInTeacher = teachers.find(t => t.loggedIn);
+        if (loggedInTeacher) {
+            showKholwaForTeacher(loggedInTeacher.classId);
+        }
+    }
 }
 
 function goHome() {
@@ -67,13 +75,16 @@ function goHome() {
 }
 
 async function updateMainInfo() {
-    const shared = await fetchShared();
-    const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
+    const shared = await fetchSharedData();
+    const kh = shared.kholwa;
     const mainInfo = document.getElementById('mainInfo');
     const todayTitle = document.getElementById('todayTitle');
     
     if (!mainInfo || !todayTitle) return;
-    if (!kh || kh.date !== todayDate()) { mainInfo.style.display = 'none'; return; }
+    if (!kh || kh.date !== todayDate()) { 
+        mainInfo.style.display = 'none'; 
+        return; 
+    }
     
     mainInfo.style.display = 'block';
     todayTitle.innerText = kh.title || 'خلوة اليوم';
@@ -98,7 +109,122 @@ function updateTimerDisplay(kh) {
     el.innerText = 'الوقت المتبقي: ' + (h + ' ساعة ' + m + ' دقيقة ' + s + ' ثانية');
 }
 
-setInterval(() => { fetchShared().then(shared => { const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa'); updateTimerDisplay(kh); }); }, 1000);
+setInterval(() => { 
+    fetchSharedData().then(shared => { 
+        const kh = shared.kholwa; 
+        updateTimerDisplay(kh); 
+    }); 
+}, 1000);
+
+// ============================================
+// نظام GitHub التلقائي
+// ============================================
+
+function updateGitHubUrls() {
+    if (GITHUB_CONFIG.username && GITHUB_CONFIG.repo) {
+        window.GITHUB_RAW_URL = `https://raw.githubusercontent.com/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/main/data.json`;
+        window.GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_CONFIG.username}/${GITHUB_CONFIG.repo}/contents/data.json`;
+    }
+}
+
+async function fetchSharedData() {
+    try {
+        // محاولة جلب البيانات من GitHub أولاً
+        if (window.GITHUB_RAW_URL) {
+            const response = await fetch(window.GITHUB_RAW_URL + '?t=' + Date.now());
+            if (response.ok) {
+                const data = await response.json();
+                return { ...data, source: 'server' };
+            }
+        }
+    } catch (error) {
+        console.log('لا يمكن الوصول إلى GitHub، استخدام البيانات المحلية');
+    }
+    
+    // استخدام البيانات المحلية كبديل
+    return { 
+        kholwa: LS.get('kholwa'), 
+        history: LS.get('history') || [],
+        source: 'local'
+    };
+}
+
+async function autoUploadToGitHub(data) {
+    if (!GITHUB_CONFIG.token || !GITHUB_CONFIG.username || !GITHUB_CONFIG.repo) {
+        console.log('إعدادات GitHub غير مكتملة');
+        return false;
+    }
+
+    try {
+        const jsonString = JSON.stringify(data, null, 2);
+        const content = btoa(unescape(encodeURIComponent(jsonString)));
+        
+        // الحصول على SHA للملف الحالي (إذا موجود)
+        let sha = '';
+        try {
+            const currentFile = await fetch(window.GITHUB_API_URL, {
+                headers: {
+                    'Authorization': `token ${GITHUB_CONFIG.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            if (currentFile.ok) {
+                const fileData = await currentFile.json();
+                sha = fileData.sha;
+            }
+        } catch (e) { /* الملف غير موجود */ }
+
+        const response = await fetch(window.GITHUB_API_URL, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${GITHUB_CONFIG.token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify({
+                message: `Auto-update: ${data.kholwa?.title || 'Kholwa Update'} - ${new Date().toISOString()}`,
+                content: content,
+                sha: sha || undefined,
+                branch: GITHUB_CONFIG.branch
+            })
+        });
+
+        if (response.ok) {
+            console.log('✅ تم الرفع التلقائي إلى GitHub بنجاح');
+            addNotification('نشر تلقائي', 'تم رفع الخلوة إلى السيرفر بنجاح', 'success');
+            return true;
+        } else {
+            throw new Error('فشل في الرفع');
+        }
+    } catch (error) {
+        console.error('❌ خطأ في الرفع التلقائي:', error);
+        addNotification('خطأ في النشر', 'تعذر الرفع التلقائي، استخدم الطريقة اليدوية', 'error');
+        return false;
+    }
+}
+
+function setupGitHub() {
+    const username = prompt('أدخل اسم مستخدم GitHub:');
+    const repo = prompt('أدخل اسم المستودع:');
+    const token = prompt('أدخل GitHub Personal Access Token:');
+
+    if (username && repo && token) {
+        GITHUB_CONFIG = {
+            username: username,
+            repo: repo,
+            token: token,
+            branch: 'main'
+        };
+        
+        LS.set('github_config', GITHUB_CONFIG);
+        updateGitHubUrls();
+        
+        alert('✅ تم إعداد GitHub بنجاح! سيتم النشر التلقائي من الآن.');
+        addNotification('إعداد GitHub', 'تم تكوين النشر التلقائي بنجاح', 'success');
+    } else {
+        alert('❌ يرجى إدخال جميع البيانات المطلوبة');
+    }
+}
 
 // ============================================
 // نظام الوسائط المتعددة
@@ -109,17 +235,60 @@ let currentMediaType = 'text';
 function setMediaType(type, event) {
     currentMediaType = type;
     const fields = ['textInput', 'pasteInput', 'cameraInput', 'fileInput'];
-    fields.forEach(field => { const element = document.getElementById(field); if (element) element.style.display = 'none'; });
-    document.querySelectorAll('.media-type-btn').forEach(btn => { btn.classList.remove('active'); });
+    fields.forEach(field => { 
+        const element = document.getElementById(field); 
+        if (element) element.style.display = 'none'; 
+    });
+    
+    document.querySelectorAll('.media-type-btn').forEach(btn => { 
+        btn.classList.remove('active'); 
+    });
+    
     if (event && event.target) event.target.classList.add('active');
     
     switch (type) {
-        case 'text': document.getElementById('textInput').style.display = 'block'; break;
-        case 'paste': document.getElementById('pasteInput').style.display = 'block'; break;
-        case 'camera': document.getElementById('cameraInput').style.display = 'block'; break;
-        case 'image': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div><strong>انقر لرفع صورة</strong><p class="note">الصور المدعومة: JPG, PNG, GIF</p></div><input type="file" id="fileUpload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">`; break;
-        case 'pdf': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">📄</div><strong>انقر لرفع ملف PDF</strong><p class="note">رفع ملف PDF</p></div><input type="file" id="fileUpload" class="hidden" accept=".pdf" onchange="handleFileUpload(event)">`; break;
-        case 'word': document.getElementById('fileInput').style.display = 'block'; document.getElementById('fileInput').innerHTML = `<div class="file-upload-area" onclick="document.getElementById('fileUpload').click()"><div style="font-size: 2rem; margin-bottom: 10px;">📋</div><strong>انقر لرفع ملف Word</strong><p class="note">رفع ملف Word</p></div><input type="file" id="fileUpload" class="hidden" accept=".doc,.docx" onchange="handleFileUpload(event)">`; break;
+        case 'text': 
+            document.getElementById('textInput').style.display = 'block'; 
+            break;
+        case 'paste': 
+            document.getElementById('pasteInput').style.display = 'block'; 
+            break;
+        case 'camera': 
+            document.getElementById('cameraInput').style.display = 'block'; 
+            break;
+        case 'image': 
+            document.getElementById('fileInput').style.display = 'block'; 
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">🖼️</div>
+                    <strong>انقر لرفع صورة</strong>
+                    <p class="note">الصور المدعومة: JPG, PNG, GIF</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+            `; 
+            break;
+        case 'pdf': 
+            document.getElementById('fileInput').style.display = 'block'; 
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📄</div>
+                    <strong>انقر لرفع ملف PDF</strong>
+                    <p class="note">رفع ملف PDF</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept=".pdf" onchange="handleFileUpload(event)">
+            `; 
+            break;
+        case 'word': 
+            document.getElementById('fileInput').style.display = 'block'; 
+            document.getElementById('fileInput').innerHTML = `
+                <div class="file-upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <div style="font-size: 2rem; margin-bottom: 10px;">📋</div>
+                    <strong>انقر لرفع ملف Word</strong>
+                    <p class="note">رفع ملف Word</p>
+                </div>
+                <input type="file" id="fileUpload" class="hidden" accept=".doc,.docx" onchange="handleFileUpload(event)">
+            `; 
+            break;
     }
 }
 
@@ -177,7 +346,7 @@ function adminLogin() {
     if (firstBtn) firstBtn.classList.add('active');
 }
 
-function publishKholwa() {
+async function publishKholwa() {
     const title = document.getElementById('dayTitle').value.trim();
     const start = document.getElementById('startTime').value;
     const end = document.getElementById('endTime').value;
@@ -206,6 +375,7 @@ function publishKholwa() {
         } 
     };
 
+    // حفظ محلي
     LS.set('kholwa', obj);
     const history = LS.get('history') || [];
     const day = { 
@@ -218,9 +388,9 @@ function publishKholwa() {
     };
     history.push(day);
     LS.set('history', history);
-
     LS.set('answeredToday', {});
 
+    // تحضير البيانات للمشاركة
     const sharedData = { 
         kholwa: obj, 
         history: history, 
@@ -228,7 +398,15 @@ function publishKholwa() {
         totalStudents: countTotalStudents(), 
         message: `خلوة ${obj.date} - ${obj.title}` 
     };
-    downloadSharedFile(sharedData);
+
+    // محاولة الرفع التلقائي إلى GitHub
+    const autoUploadSuccess = await autoUploadToGitHub(sharedData);
+    
+    if (!autoUploadSuccess) {
+        // إذا فشل الرفع التلقائي، عرض خيار التنزيل اليدوي
+        downloadSharedFile(sharedData);
+    }
+    
     addNotification('نشر خلوة', `تم نشر "${obj.title}" بنجاح`, 'success');
 }
 
@@ -358,7 +536,7 @@ function loadReport() {
 }
 
 // ============================================
-// نظام الخدام
+// نظام الخدام - مع عرض الخلوة
 // ============================================
 
 function teacherLogin() {
@@ -367,53 +545,91 @@ function teacherLogin() {
     const teachers = LS.get('teachers') || [];
     const found = teachers.find(t => t.username === u && t.password === p);
     if (!found) return alert('بيانات دخول خاطئة');
+    
+    // تسجيل دخول الخادم
+    teachers.forEach(t => t.loggedIn = false);
+    found.loggedIn = true;
+    LS.set('teachers', teachers);
+    
     document.getElementById('teacherLoginBox').style.display = 'none';
     document.getElementById('teacherPanel').style.display = 'block';
     document.getElementById('teacherClass').innerText = found.classId;
     
+    // عرض الخلوة الحالية للخادم
     showKholwaForTeacher(found.classId);
     loadTeacherStatus(found.classId);
 }
 
-function showKholwaForTeacher(classId) {
-    const shared = LS.get('kholwa');
+async function showKholwaForTeacher(classId) {
+    const shared = await fetchSharedData();
+    const kh = shared.kholwa;
     const teacherKholwa = document.getElementById('teacherKholwa');
     
     if (!teacherKholwa) return;
     
-    if (!shared || shared.date !== todayDate()) {
-        teacherKholwa.innerHTML = '<p class="note">لا توجد خلوة نشطة لليوم</p>';
+    if (!kh || kh.date !== todayDate()) {
+        teacherKholwa.innerHTML = `
+            <div class="kholwa-card">
+                <h3 style="color: #666; text-align: center;">لا توجد خلوة نشطة لليوم</h3>
+                <p class="note" style="text-align: center;">انتظر حتى ينشر المسؤول الخلوة اليومية</p>
+            </div>
+        `;
+        return;
+    }
+
+    // التحقق من توقيت الخلوة
+    const now = new Date();
+    const start = new Date(kh.startISO);
+    const end = new Date(kh.endISO);
+    
+    if (now < start) {
+        teacherKholwa.innerHTML = `
+            <div class="kholwa-card">
+                <h3 style="color: #666; text-align: center;">الخلوة ستبدأ قريباً</h3>
+                <p class="note" style="text-align: center;">تبدأ في: ${start.toLocaleString('ar-EG')}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    if (now > end) {
+        teacherKholwa.innerHTML = `
+            <div class="kholwa-card">
+                <h3 style="color: #666; text-align: center;">انتهت الخلوة</h3>
+                <p class="note" style="text-align: center;">شكراً لمشاركتكم اليوم ❤️</p>
+            </div>
+        `;
         return;
     }
 
     let contentHTML = '';
-    if (shared.type === 'text') {
-        contentHTML = `<div class="kholwa-content">${shared.content.replace(/\n/g, '<br>')}</div>`;
-    } else if (shared.type === 'image') {
-        const imageMatch = shared.content.match(/!\[.*?\]\((.*?)\)/);
+    if (kh.type === 'text') {
+        contentHTML = `<div class="kholwa-content">${kh.content.replace(/\n/g, '<br>')}</div>`;
+    } else if (kh.type === 'image') {
+        const imageMatch = kh.content.match(/!\[.*?\]\((.*?)\)/);
         if (imageMatch && imageMatch[1]) {
             contentHTML = `<img src="${imageMatch[1]}" alt="صورة الخلوة" style="max-width:100%; border-radius:8px; margin:10px 0;">`;
         } else {
-            contentHTML = `<div class="kholwa-content">${shared.content}</div>`;
+            contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
         }
     } else {
-        contentHTML = `<div class="kholwa-content">${shared.content}</div>`;
+        contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
     }
 
     teacherKholwa.innerHTML = `
         <div class="kholwa-card">
-            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 15px;">${shared.title || 'خلوة اليوم'}</h3>
+            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 15px;">${kh.title || 'خلوة اليوم'} 👁️</h3>
             <div class="kholwa-body">
                 ${contentHTML}
             </div>
-            ${shared.question && shared.question.text ? `
+            ${kh.question && kh.question.text ? `
                 <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                     <h4 style="color: #e74c3c; margin-bottom: 10px;">سؤال اليوم:</h4>
-                    <p><strong>${shared.question.text}</strong></p>
+                    <p><strong>${kh.question.text}</strong></p>
                     <div style="margin-top: 10px;">
-                        ${shared.question.options.map((option, index) => `
+                        ${kh.question.options.map((option, index) => `
                             <div style="padding: 8px; margin: 5px 0; background: white; border-radius: 6px; border: 1px solid #ddd;">
-                                ${index + 1}. ${option} ${index === shared.question.correctIndex ? '✅' : ''}
+                                ${index + 1}. ${option} ${index === kh.question.correctIndex ? '✅' : ''}
                             </div>
                         `).join('')}
                     </div>
@@ -564,7 +780,7 @@ async function showKholwaForChild(name, cls) {
     
     try {
         // جلب البيانات من السيرفر
-        const shared = await fetchShared();
+        const shared = await fetchSharedData();
         const kh = shared.kholwa;
         
         if (!kh) {
@@ -730,7 +946,7 @@ function displayQuestionForChild(kh, name, cls) {
 }
 
 function handleAnswerSelection(selectedIndex, studentName, studentClass) {
-    fetchShared().then(shared => {
+    fetchSharedData().then(shared => {
         const kh = (shared && shared.kholwa) ? shared.kholwa : LS.get('kholwa');
         if (!kh || !kh.question) return;
 

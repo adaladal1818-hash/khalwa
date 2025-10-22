@@ -561,16 +561,23 @@ function teacherLogin() {
 }
 
 async function showKholwaForTeacher(classId) {
+    console.log('عرض الخلوة للخادم، الفصل:', classId);
+    
     const shared = await fetchSharedData();
     const kh = shared.kholwa;
     const teacherKholwa = document.getElementById('teacherKholwa');
     
-    if (!teacherKholwa) return;
+    if (!teacherKholwa) {
+        console.error('عنصر teacherKholwa غير موجود');
+        return;
+    }
     
-    if (!kh || kh.date !== todayDate()) {
+    console.log('بيانات الخلوة:', kh);
+    
+    if (!kh) {
         teacherKholwa.innerHTML = `
             <div class="kholwa-card">
-                <h3 style="color: #666; text-align: center;">لا توجد خلوة نشطة لليوم</h3>
+                <h3 style="color: #666; text-align: center;">📭 لا توجد خلوة نشطة لليوم</h3>
                 <p class="note" style="text-align: center;">انتظر حتى ينشر المسؤول الخلوة اليومية</p>
             </div>
         `;
@@ -581,12 +588,26 @@ async function showKholwaForTeacher(classId) {
     const now = new Date();
     const start = new Date(kh.startISO);
     const end = new Date(kh.endISO);
+    const isToday = kh.date === todayDate();
+    
+    console.log('التحقق من التوقيت:', { now, start, end, isToday });
+    
+    if (!isToday) {
+        teacherKholwa.innerHTML = `
+            <div class="kholwa-card">
+                <h3 style="color: #666; text-align: center;">📅 الخلوة ليست لليوم الحالي</h3>
+                <p class="note" style="text-align: center;">تاريخ الخلوة: ${kh.date}</p>
+            </div>
+        `;
+        return;
+    }
     
     if (now < start) {
         teacherKholwa.innerHTML = `
             <div class="kholwa-card">
-                <h3 style="color: #666; text-align: center;">الخلوة ستبدأ قريباً</h3>
+                <h3 style="color: #666; text-align: center;">⏳ الخلوة ستبدأ قريباً</h3>
                 <p class="note" style="text-align: center;">تبدأ في: ${start.toLocaleString('ar-EG')}</p>
+                <p class="note" style="text-align: center;">الوقت المتبقي: ${Math.max(0, Math.floor((start - now) / 60000))} دقيقة</p>
             </div>
         `;
         return;
@@ -595,20 +616,28 @@ async function showKholwaForTeacher(classId) {
     if (now > end) {
         teacherKholwa.innerHTML = `
             <div class="kholwa-card">
-                <h3 style="color: #666; text-align: center;">انتهت الخلوة</h3>
+                <h3 style="color: #666; text-align: center;">✅ انتهت الخلوة</h3>
                 <p class="note" style="text-align: center;">شكراً لمشاركتكم اليوم ❤️</p>
+                <p class="note" style="text-align: center;">انتهت في: ${end.toLocaleString('ar-EG')}</p>
             </div>
         `;
         return;
     }
 
+    // عرض محتوى الخلوة
     let contentHTML = '';
     if (kh.type === 'text') {
-        contentHTML = `<div class="kholwa-content">${kh.content.replace(/\n/g, '<br>')}</div>`;
+        contentHTML = `<div class="kholwa-content" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-right: 4px solid #3498db;">${kh.content.replace(/\n/g, '<br>')}</div>`;
     } else if (kh.type === 'image') {
         const imageMatch = kh.content.match(/!\[.*?\]\((.*?)\)/);
         if (imageMatch && imageMatch[1]) {
-            contentHTML = `<img src="${imageMatch[1]}" alt="صورة الخلوة" style="max-width:100%; border-radius:8px; margin:10px 0;">`;
+            contentHTML = `
+                <div style="text-align: center;">
+                    <img src="${imageMatch[1]}" alt="صورة الخلوة" 
+                         style="max-width:100%; border-radius:12px; margin:10px 0; border: 3px solid #e0e0e0;">
+                    <p class="note">🖼️ صورة الخلوة</p>
+                </div>
+            `;
         } else {
             contentHTML = `<div class="kholwa-content">${kh.content}</div>`;
         }
@@ -617,28 +646,39 @@ async function showKholwaForTeacher(classId) {
     }
 
     teacherKholwa.innerHTML = `
-        <div class="kholwa-card">
-            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 15px;">${kh.title || 'خلوة اليوم'} 👁️</h3>
+        <div class="kholwa-card" style="background: linear-gradient(135deg, #ffffff, #f8f9fa);">
+            <h3 style="color: #2c3e50; text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #3498db;">
+                👁️ ${kh.title || 'خلوة اليوم'} - للفصل ${classId}
+            </h3>
             <div class="kholwa-body">
                 ${contentHTML}
             </div>
             ${kh.question && kh.question.text ? `
-                <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                    <h4 style="color: #e74c3c; margin-bottom: 10px;">سؤال اليوم:</h4>
-                    <p><strong>${kh.question.text}</strong></p>
-                    <div style="margin-top: 10px;">
+                <div style="margin-top: 25px; padding: 20px; background: #fff3cd; border-radius: 10px; border-right: 4px solid #f39c12;">
+                    <h4 style="color: #e74c3c; margin-bottom: 15px; text-align: center;">🧠 سؤال اليوم (للطلاب)</h4>
+                    <p style="font-size: 1.1rem; font-weight: 600; text-align: center; margin-bottom: 15px;">${kh.question.text}</p>
+                    <div style="margin-top: 15px;">
                         ${kh.question.options.map((option, index) => `
-                            <div style="padding: 8px; margin: 5px 0; background: white; border-radius: 6px; border: 1px solid #ddd;">
-                                ${index + 1}. ${option} ${index === kh.question.correctIndex ? '✅' : ''}
+                            <div style="padding: 12px; margin: 8px 0; background: white; border-radius: 8px; border: 2px solid #ddd; display: flex; align-items: center;">
+                                <span style="background: ${index === kh.question.correctIndex ? '#27ae60' : '#3498db'}; color: white; padding: 4px 10px; border-radius: 50%; margin-left: 10px; font-weight: bold;">
+                                    ${index + 1}
+                                </span>
+                                <span style="flex: 1;">${option}</span>
+                                ${index === kh.question.correctIndex ? '<span style="color: #27ae60; font-weight: bold;">✅ الإجابة الصحيحة</span>' : ''}
                             </div>
                         `).join('')}
                     </div>
                 </div>
             ` : ''}
+            
+            <div style="margin-top: 20px; padding: 15px; background: #e8f4fd; border-radius: 8px; text-align: center;">
+                <p style="margin: 0; color: #3498db; font-weight: 600;">⏰ وقت الخلوة: ${new Date(kh.startISO).toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})} - ${new Date(kh.endISO).toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'})}</p>
+            </div>
         </div>
     `;
+    
+    console.log('تم عرض الخلوة للخادم بنجاح');
 }
-
 function addStudents() {
     const txt = document.getElementById('studentNames').value.trim();
     if (!txt) return alert('ادخل أسماء');

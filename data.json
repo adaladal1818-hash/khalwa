@@ -1,11 +1,4 @@
 {
-  "kholwa": null,
-  "history": [],
-  "lastUpdated": "2024-01-01T00:00:00.000Z",
-  "totalStudents": 0,
-  "message": "لا توجد خلوة نشطة"
-}
-{
   "kholwa": {
     "date": "2025-10-24",
     "title": "خلوه تجريبيه 4",
@@ -72,4 +65,4 @@
   "lastUpdated": "2025-10-24T14:40:47.789Z",
   "totalStudents": 0,
   "message": "خلوة 2025-10-24 - خلوه تجريبيه 4"
-  }
+}
